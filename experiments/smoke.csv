@@ -1,0 +1,9 @@
+model,temperature,cap_uc,run_index,outcome,n_calls_made,total_input_tokens,total_output_tokens,actual_spent_uc,error_msg
+claude-sonnet-4-5-20250929,0.0,800,0,mid_loop_fired,1,61,200,0,
+claude-sonnet-4-5-20250929,0.3,800,0,mid_loop_fired,1,61,200,0,
+claude-sonnet-4-5-20250929,0.7,800,0,mid_loop_fired,1,61,200,0,
+claude-sonnet-4-5-20250929,1.0,800,0,mid_loop_fired,1,61,200,0,
+gpt-4o-mini-2024-07-18,0.0,200,0,pre_flight_refused,0,0,0,0,
+gpt-4o-mini-2024-07-18,0.3,200,0,pre_flight_refused,0,0,0,0,
+gpt-4o-mini-2024-07-18,0.7,200,0,pre_flight_refused,0,0,0,0,
+gpt-4o-mini-2024-07-18,1.0,200,0,pre_flight_refused,0,0,0,0,

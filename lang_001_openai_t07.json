@@ -1,0 +1,76 @@
+{
+  "config": {
+    "provider": "openai",
+    "model": "gpt-4o-mini-2024-07-18",
+    "temperature": 0.7,
+    "recursion_limit": 25,
+    "n_runs": 5,
+    "caps": [
+      300.0,
+      500.0,
+      700.0,
+      1000.0,
+      2000.0
+    ]
+  },
+  "vulnerable": {
+    "n_runs": 5,
+    "outcomes": {
+      "recursion_limit_hit": 3,
+      "completed": 2
+    },
+    "mean_spent_uc": 1536.3899999999999,
+    "stdev_spent_uc": 1025.3237003502843,
+    "min_spent_uc": 724.9499999999999,
+    "max_spent_uc": 3329.3999999999996,
+    "mean_tool_calls": 16.6,
+    "max_tool_calls": 34
+  },
+  "cap_analysis": {
+    "300.0": {
+      "n_runs": 5,
+      "n_fires": 5,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 4.8,
+      "mean_spend_at_fire_uc": 256.10999999999996,
+      "mean_reduction_factor": 6.266568685146485
+    },
+    "500.0": {
+      "n_runs": 5,
+      "n_fires": 5,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 6.2,
+      "mean_spend_at_fire_uc": 417.11999999999995,
+      "mean_reduction_factor": 3.8123666498357487
+    },
+    "700.0": {
+      "n_runs": 5,
+      "n_fires": 5,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 7.6,
+      "mean_spend_at_fire_uc": 612.3,
+      "mean_reduction_factor": 2.5776714116389825
+    },
+    "1000.0": {
+      "n_runs": 5,
+      "n_fires": 4,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 9.75,
+      "mean_spend_at_fire_uc": 876.8699999999999,
+      "mean_reduction_factor": 1.8108627120385028
+    },
+    "2000.0": {
+      "n_runs": 5,
+      "n_fires": 1,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 10,
+      "mean_spend_at_fire_uc": 1199.9099999999999,
+      "mean_reduction_factor": 1.2042987249544626
+    }
+  },
+  "__totals__": {
+    "n_runs": 5,
+    "wall_sec": 391.6873848438263,
+    "estimated_cost_usd": 0.007681949999999999
+  }
+}

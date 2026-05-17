@@ -1,0 +1,64 @@
+{
+  "claude-sonnet-4-5-20250929@T=0.0@cap=11000": {
+    "n_total": 10,
+    "outcomes": {
+      "mid_loop_fired": 10
+    },
+    "mean_spent_uc": 1776.0,
+    "stdev_spent_uc": 0.0,
+    "max_spent_uc": 1776.0,
+    "mean_n_calls": 1,
+    "stdev_n_calls": 0.0,
+    "mean_output_tokens": 103,
+    "stdev_output_tokens": 0.0,
+    "cap_violations": 0
+  },
+  "claude-sonnet-4-5-20250929@T=0.3@cap=11000": {
+    "n_total": 10,
+    "outcomes": {
+      "mid_loop_fired": 10
+    },
+    "mean_spent_uc": 1890.0,
+    "stdev_spent_uc": 144.25671561490648,
+    "max_spent_uc": 2211.0,
+    "mean_n_calls": 1,
+    "stdev_n_calls": 0.0,
+    "mean_output_tokens": 110.6,
+    "stdev_output_tokens": 9.617114374327098,
+    "cap_violations": 0
+  },
+  "claude-sonnet-4-5-20250929@T=0.7@cap=11000": {
+    "n_total": 10,
+    "outcomes": {
+      "mid_loop_fired": 10
+    },
+    "mean_spent_uc": 1984.5,
+    "stdev_spent_uc": 121.13009535206352,
+    "max_spent_uc": 2181.0,
+    "mean_n_calls": 1,
+    "stdev_n_calls": 0.0,
+    "mean_output_tokens": 116.9,
+    "stdev_output_tokens": 8.075339690137568,
+    "cap_violations": 0
+  },
+  "claude-sonnet-4-5-20250929@T=1.0@cap=11000": {
+    "n_total": 10,
+    "outcomes": {
+      "mid_loop_fired": 10
+    },
+    "mean_spent_uc": 1731.0,
+    "stdev_spent_uc": 209.16500663351889,
+    "max_spent_uc": 2046.0,
+    "mean_n_calls": 1,
+    "stdev_n_calls": 0.0,
+    "mean_output_tokens": 100,
+    "stdev_output_tokens": 13.944333775567927,
+    "cap_violations": 0
+  },
+  "__totals__": {
+    "n_total": 40,
+    "wall_time_sec": 244.83114385604858,
+    "total_cap_violations": 0,
+    "estimated_cost_usd": 0.073815
+  }
+}

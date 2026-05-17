@@ -1,0 +1,11 @@
+condition,run_index,outcome,n_tool_calls,n_llm_calls,spent_uc,pre_hook_fired_at_call,wall_sec,error_msg
+vulnerable,0,recursion_limit_hit,22,9,1662.9,,38.07612752914429,
+vulnerable,1,recursion_limit_hit,30,13,2811.0,,42.29849362373352,
+vulnerable,2,recursion_limit_hit,31,8,2019.0,,29.820082187652588,
+vulnerable,3,recursion_limit_hit,12,13,1320.3,,34.57516884803772,
+vulnerable,4,recursion_limit_hit,24,11,2103.45,,34.066606521606445,
+protected,0,budget_exhausted,9,3,259.79999999999995,4,24.085957765579224,pre_model_hook: running spend 260 uc + estimated next-call cost 593 uc > cap 700.0 uc
+protected,1,budget_exhausted,7,3,226.35000000000002,4,27.725744247436523,pre_model_hook: running spend 226 uc + estimated next-call cost 542 uc > cap 700.0 uc
+protected,2,budget_exhausted,7,3,225.75,4,16.22360110282898,pre_model_hook: running spend 226 uc + estimated next-call cost 541 uc > cap 700.0 uc
+protected,3,budget_exhausted,9,3,259.2,4,7.610435247421265,pre_model_hook: running spend 259 uc + estimated next-call cost 592 uc > cap 700.0 uc
+protected,4,budget_exhausted,5,5,277.5,6,8.705943822860718,pre_model_hook: running spend 278 uc + estimated next-call cost 487 uc > cap 700.0 uc

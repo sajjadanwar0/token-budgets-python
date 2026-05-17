@@ -1,0 +1,120 @@
+{
+  "claude-sonnet-4-5-20250929@T=0.0@cap=30000": {
+    "n_total": 10,
+    "outcomes": {
+      "completed_within_cap": 10
+    },
+    "mean_spent_uc": 7761.9,
+    "stdev_spent_uc": 165.9038878387122,
+    "max_spent_uc": 7914.0,
+    "mean_n_calls": 3,
+    "stdev_n_calls": 0.0,
+    "mean_output_tokens": 421.1,
+    "stdev_output_tokens": 13.42841100883579,
+    "cap_violations": 0
+  },
+  "claude-sonnet-4-5-20250929@T=0.3@cap=30000": {
+    "n_total": 10,
+    "outcomes": {
+      "completed_within_cap": 10
+    },
+    "mean_spent_uc": 7348.8,
+    "stdev_spent_uc": 662.7445963566961,
+    "max_spent_uc": 8457.0,
+    "mean_n_calls": 3,
+    "stdev_n_calls": 0.0,
+    "mean_output_tokens": 390.9,
+    "stdev_output_tokens": 43.22666358215083,
+    "cap_violations": 0
+  },
+  "claude-sonnet-4-5-20250929@T=0.7@cap=30000": {
+    "n_total": 10,
+    "outcomes": {
+      "completed_within_cap": 10
+    },
+    "mean_spent_uc": 7065.6,
+    "stdev_spent_uc": 545.3875686152005,
+    "max_spent_uc": 8451.0,
+    "mean_n_calls": 3,
+    "stdev_n_calls": 0.0,
+    "mean_output_tokens": 375.3,
+    "stdev_output_tokens": 31.517367346344848,
+    "cap_violations": 0
+  },
+  "claude-sonnet-4-5-20250929@T=1.0@cap=30000": {
+    "n_total": 10,
+    "outcomes": {
+      "completed_within_cap": 10
+    },
+    "mean_spent_uc": 7230.6,
+    "stdev_spent_uc": 890.088534922229,
+    "max_spent_uc": 8814.0,
+    "mean_n_calls": 3,
+    "stdev_n_calls": 0.0,
+    "mean_output_tokens": 387,
+    "stdev_output_tokens": 54.275019832126986,
+    "cap_violations": 0
+  },
+  "gpt-4o-mini-2024-07-18@T=0.0@cap=1500": {
+    "n_total": 10,
+    "outcomes": {
+      "completed_within_cap": 10
+    },
+    "mean_spent_uc": 269.46,
+    "stdev_spent_uc": 10.862826519833595,
+    "max_spent_uc": 282.9,
+    "mean_n_calls": 3,
+    "stdev_n_calls": 0.0,
+    "mean_output_tokens": 337.2,
+    "stdev_output_tokens": 16.94304183630161,
+    "cap_violations": 0
+  },
+  "gpt-4o-mini-2024-07-18@T=0.3@cap=1500": {
+    "n_total": 10,
+    "outcomes": {
+      "completed_within_cap": 10
+    },
+    "mean_spent_uc": 252.375,
+    "stdev_spent_uc": 21.97672063798419,
+    "max_spent_uc": 306.0,
+    "mean_n_calls": 3,
+    "stdev_n_calls": 0.0,
+    "mean_output_tokens": 312.2,
+    "stdev_output_tokens": 35.25715057497793,
+    "cap_violations": 0
+  },
+  "gpt-4o-mini-2024-07-18@T=0.7@cap=1500": {
+    "n_total": 10,
+    "outcomes": {
+      "completed_within_cap": 10
+    },
+    "mean_spent_uc": 269.35499999999996,
+    "stdev_spent_uc": 34.557781323458826,
+    "max_spent_uc": 325.5,
+    "mean_n_calls": 3,
+    "stdev_n_calls": 0.0,
+    "mean_output_tokens": 339.3,
+    "stdev_output_tokens": 53.54551542587131,
+    "cap_violations": 0
+  },
+  "gpt-4o-mini-2024-07-18@T=1.0@cap=1500": {
+    "n_total": 10,
+    "outcomes": {
+      "completed_within_cap": 10
+    },
+    "mean_spent_uc": 269.895,
+    "stdev_spent_uc": 25.5946332265184,
+    "max_spent_uc": 312.29999999999995,
+    "mean_n_calls": 3,
+    "stdev_n_calls": 0.0,
+    "mean_output_tokens": 337.4,
+    "stdev_output_tokens": 40.765453784083185,
+    "cap_violations": 0
+  },
+  "__totals__": {
+    "n_total": 80,
+    "wall_time_sec": 1000.8923101425171,
+    "total_cap_violations": 0,
+    "estimated_cost_usd": 0.30467985
+  }
+}

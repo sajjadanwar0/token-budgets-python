@@ -1,0 +1,21 @@
+[build-system]
+requires      = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name            = "token-budgets"
+version         = "0.1.0"
+description     = "Runtime affine-discipline port of Token Budgets"
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic>=0.102.0",
+    "langchain>=1.3.1",
+    "langchain-anthropic>=1.4.3",
+    "langchain-core>=1.4.0",
+    "langchain-openai>=1.2.1",
+    "langgraph>=1.2.0",
+    "openai>=2.37.0",
+]
+
+[tool.setuptools]
+py-modules = ["token_budgets"]

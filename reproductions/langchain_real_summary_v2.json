@@ -1,0 +1,113 @@
+{
+  "anthropic/S1_steady_within_cap": {
+    "n_total": 1,
+    "outcomes": {
+      "completed_within_cap": 1
+    },
+    "total_actual_uc": 30640,
+    "total_estimate_uc": 84800,
+    "max_actual_uc": 30640,
+    "cap_violations": 0,
+    "cap_uc": 254400,
+    "mean_actual_uc": 30640.0,
+    "mean_over_reservation_x": 2.7676240208877285
+  },
+  "anthropic/S2_aggregate_overshoot": {
+    "n_total": 1,
+    "outcomes": {
+      "mid_loop_fired": 1
+    },
+    "total_actual_uc": 43280,
+    "total_estimate_uc": 64240,
+    "max_actual_uc": 43280,
+    "cap_violations": 0,
+    "cap_uc": 77136,
+    "mean_actual_uc": 43280.0,
+    "mean_over_reservation_x": 1.4842883548983363
+  },
+  "anthropic/S3_oversized_first_call": {
+    "n_total": 1,
+    "outcomes": {
+      "pre_flight_refused": 1
+    },
+    "total_actual_uc": 0,
+    "total_estimate_uc": 0,
+    "max_actual_uc": 0,
+    "cap_violations": 0,
+    "cap_uc": 80736,
+    "mean_actual_uc": 0.0,
+    "mean_over_reservation_x": null
+  },
+  "anthropic/S4_context_growth": {
+    "n_total": 1,
+    "outcomes": {
+      "mid_loop_fired": 1
+    },
+    "total_actual_uc": 96720,
+    "total_estimate_uc": 89120,
+    "max_actual_uc": 96720,
+    "cap_violations": 0,
+    "cap_uc": 116032,
+    "mean_actual_uc": 96720.0,
+    "mean_over_reservation_x": 0.9214226633581473
+  },
+  "openai/S1_steady_within_cap": {
+    "n_total": 1,
+    "outcomes": {
+      "completed_within_cap": 1
+    },
+    "total_actual_uc": 3780,
+    "total_estimate_uc": 12900,
+    "max_actual_uc": 3780,
+    "cap_violations": 0,
+    "cap_uc": 38700,
+    "mean_actual_uc": 3780.0,
+    "mean_over_reservation_x": 3.4126984126984126
+  },
+  "openai/S2_aggregate_overshoot": {
+    "n_total": 1,
+    "outcomes": {
+      "mid_loop_fired": 1
+    },
+    "total_actual_uc": 5205,
+    "total_estimate_uc": 9795,
+    "max_actual_uc": 5205,
+    "cap_violations": 0,
+    "cap_uc": 11763,
+    "mean_actual_uc": 5205.0,
+    "mean_over_reservation_x": 1.8818443804034581
+  },
+  "openai/S3_oversized_first_call": {
+    "n_total": 1,
+    "outcomes": {
+      "pre_flight_refused": 1
+    },
+    "total_actual_uc": 0,
+    "total_estimate_uc": 0,
+    "max_actual_uc": 0,
+    "cap_violations": 0,
+    "cap_uc": 14238,
+    "mean_actual_uc": 0.0,
+    "mean_over_reservation_x": null
+  },
+  "openai/S4_context_growth": {
+    "n_total": 1,
+    "outcomes": {
+      "mid_loop_fired": 1
+    },
+    "total_actual_uc": 14925,
+    "total_estimate_uc": 14460,
+    "max_actual_uc": 14925,
+    "cap_violations": 0,
+    "cap_uc": 20256,
+    "mean_actual_uc": 14925.0,
+    "mean_over_reservation_x": 0.9688442211055276
+  },
+  "__totals__": {
+    "n_total": 8,
+    "wall_time_sec": 31.67459201812744,
+    "total_cap_violations": 0,
+    "total_spent_uc": 194550,
+    "estimated_total_cost_usd": 0.0019455
+  }
+}

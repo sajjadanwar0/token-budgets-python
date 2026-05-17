@@ -1,0 +1,80 @@
+{
+  "claude-sonnet-4-5-20250929@T=0.0@cap=800": {
+    "n_total": 1,
+    "outcomes": {
+      "mid_loop_fired": 1
+    },
+    "mean_spent_uc": 0.0,
+    "max_spent_uc": 0,
+    "cap_violations": 0
+  },
+  "claude-sonnet-4-5-20250929@T=0.3@cap=800": {
+    "n_total": 1,
+    "outcomes": {
+      "mid_loop_fired": 1
+    },
+    "mean_spent_uc": 0.0,
+    "max_spent_uc": 0,
+    "cap_violations": 0
+  },
+  "claude-sonnet-4-5-20250929@T=0.7@cap=800": {
+    "n_total": 1,
+    "outcomes": {
+      "mid_loop_fired": 1
+    },
+    "mean_spent_uc": 0.0,
+    "max_spent_uc": 0,
+    "cap_violations": 0
+  },
+  "claude-sonnet-4-5-20250929@T=1.0@cap=800": {
+    "n_total": 1,
+    "outcomes": {
+      "mid_loop_fired": 1
+    },
+    "mean_spent_uc": 0.0,
+    "max_spent_uc": 0,
+    "cap_violations": 0
+  },
+  "gpt-4o-mini-2024-07-18@T=0.0@cap=200": {
+    "n_total": 1,
+    "outcomes": {
+      "pre_flight_refused": 1
+    },
+    "mean_spent_uc": 0.0,
+    "max_spent_uc": 0,
+    "cap_violations": 0
+  },
+  "gpt-4o-mini-2024-07-18@T=0.3@cap=200": {
+    "n_total": 1,
+    "outcomes": {
+      "pre_flight_refused": 1
+    },
+    "mean_spent_uc": 0.0,
+    "max_spent_uc": 0,
+    "cap_violations": 0
+  },
+  "gpt-4o-mini-2024-07-18@T=0.7@cap=200": {
+    "n_total": 1,
+    "outcomes": {
+      "pre_flight_refused": 1
+    },
+    "mean_spent_uc": 0.0,
+    "max_spent_uc": 0,
+    "cap_violations": 0
+  },
+  "gpt-4o-mini-2024-07-18@T=1.0@cap=200": {
+    "n_total": 1,
+    "outcomes": {
+      "pre_flight_refused": 1
+    },
+    "mean_spent_uc": 0.0,
+    "max_spent_uc": 0,
+    "cap_violations": 0
+  },
+  "__totals__": {
+    "n_total": 8,
+    "wall_time_sec": 30.102529287338257,
+    "total_cap_violations": 0,
+    "estimated_cost_usd": 0.0
+  }
+}

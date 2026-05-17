@@ -1,0 +1,9 @@
+provider,model,scenario,rep,cap_uc,outcome,n_calls_attempted,n_calls_completed,total_estimate_uc,total_actual_uc,cap_violations,error_msg
+anthropic,claude-haiku-4-5,S1_steady_within_cap,0,254400,completed_within_cap,4,4,84800,30640,0,
+anthropic,claude-haiku-4-5,S2_aggregate_overshoot,0,77136,mid_loop_fired,4,3,64240,45680,0,"requested 21440 uc, only 12896 available"
+anthropic,claude-haiku-4-5,S3_runaway_step,0,150600,completed_within_cap,3,3,100400,67040,0,
+anthropic,claude-haiku-4-5,S4_context_growth,0,142944,completed_within_cap,5,5,104000,29600,0,
+openai,gpt-4o-mini-2024-07-18,S1_steady_within_cap,0,38700,completed_within_cap,4,4,12900,3780,0,
+openai,gpt-4o-mini-2024-07-18,S2_aggregate_overshoot,0,11763,mid_loop_fired,4,3,9795,5385,0,"requested 3270 uc, only 1968 available"
+openai,gpt-4o-mini-2024-07-18,S3_runaway_step,0,24862,completed_within_cap,3,3,16575,11295,0,
+openai,gpt-4o-mini-2024-07-18,S4_context_growth,0,22302,completed_within_cap,5,5,15750,4425,0,

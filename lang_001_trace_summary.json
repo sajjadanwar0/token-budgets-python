@@ -1,0 +1,61 @@
+{
+  "vulnerable": {
+    "n_runs": 5,
+    "outcomes": {
+      "recursion_limit_hit": 4,
+      "completed": 1
+    },
+    "mean_spent_uc": 2229.42,
+    "stdev_spent_uc": 1550.208839801915,
+    "max_spent_uc": 4796.4,
+    "mean_tool_calls": 22.6,
+    "max_tool_calls": 52
+  },
+  "cap_analysis": {
+    "300.0": {
+      "n_runs": 5,
+      "n_fires": 5,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 5.2,
+      "mean_spend_at_fire_uc": 273.24,
+      "mean_reduction_factor": 8.174008498368664
+    },
+    "500.0": {
+      "n_runs": 5,
+      "n_fires": 5,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 6.6,
+      "mean_spend_at_fire_uc": 414.65999999999997,
+      "mean_reduction_factor": 6.259441917567023
+    },
+    "700.0": {
+      "n_runs": 5,
+      "n_fires": 5,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 8,
+      "mean_spend_at_fire_uc": 600.42,
+      "mean_reduction_factor": 4.048385804521736
+    },
+    "1000.0": {
+      "n_runs": 5,
+      "n_fires": 5,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 10,
+      "mean_spend_at_fire_uc": 919.44,
+      "mean_reduction_factor": 2.5938323068549494
+    },
+    "2000.0": {
+      "n_runs": 5,
+      "n_fires": 2,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 10.5,
+      "mean_spend_at_fire_uc": 1518.63,
+      "mean_reduction_factor": 1.3729110336631687
+    }
+  },
+  "__totals__": {
+    "n_runs": 5,
+    "wall_time_sec": 122.09628343582153,
+    "estimated_cost_usd": 0.0111471
+  }
+}

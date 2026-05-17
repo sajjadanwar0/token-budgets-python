@@ -1,0 +1,41 @@
+provider,model,scenario,rep,cap_uc,outcome,n_calls_attempted,n_calls_completed,total_estimate_uc,total_actual_uc,cap_violations,error_msg
+anthropic,claude-haiku-4-5,S1_steady_within_cap,0,254400,completed_within_cap,4,4,84800,27840,0,
+anthropic,claude-haiku-4-5,S1_steady_within_cap,1,254400,completed_within_cap,4,4,84800,30640,0,
+anthropic,claude-haiku-4-5,S1_steady_within_cap,2,254400,completed_within_cap,4,4,84800,27840,0,
+anthropic,claude-haiku-4-5,S1_steady_within_cap,3,254400,completed_within_cap,4,4,84800,27840,0,
+anthropic,claude-haiku-4-5,S1_steady_within_cap,4,254400,completed_within_cap,4,4,84800,27840,0,
+anthropic,claude-haiku-4-5,S2_aggregate_overshoot,0,77136,mid_loop_fired,4,3,64240,44480,0,"requested 21440 uc, only 12896 available"
+anthropic,claude-haiku-4-5,S2_aggregate_overshoot,1,77136,mid_loop_fired,4,3,64240,45680,0,"requested 21440 uc, only 12896 available"
+anthropic,claude-haiku-4-5,S2_aggregate_overshoot,2,77136,mid_loop_fired,4,3,64240,45280,0,"requested 21440 uc, only 12896 available"
+anthropic,claude-haiku-4-5,S2_aggregate_overshoot,3,77136,mid_loop_fired,4,3,64240,40480,0,"requested 21440 uc, only 12896 available"
+anthropic,claude-haiku-4-5,S2_aggregate_overshoot,4,77136,mid_loop_fired,4,3,64240,45280,0,"requested 21440 uc, only 12896 available"
+anthropic,claude-haiku-4-5,S3_oversized_first_call,0,80736,pre_flight_refused,1,0,0,0,0,"requested 161440 uc, only 80736 available"
+anthropic,claude-haiku-4-5,S3_oversized_first_call,1,80736,pre_flight_refused,1,0,0,0,0,"requested 161440 uc, only 80736 available"
+anthropic,claude-haiku-4-5,S3_oversized_first_call,2,80736,pre_flight_refused,1,0,0,0,0,"requested 161440 uc, only 80736 available"
+anthropic,claude-haiku-4-5,S3_oversized_first_call,3,80736,pre_flight_refused,1,0,0,0,0,"requested 161440 uc, only 80736 available"
+anthropic,claude-haiku-4-5,S3_oversized_first_call,4,80736,pre_flight_refused,1,0,0,0,0,"requested 161440 uc, only 80736 available"
+anthropic,claude-haiku-4-5,S4_context_growth,0,116032,mid_loop_fired,4,3,89120,96720,0,"requested 44000 uc, only 26912 available"
+anthropic,claude-haiku-4-5,S4_context_growth,1,116032,mid_loop_fired,4,3,89120,96720,0,"requested 44000 uc, only 26912 available"
+anthropic,claude-haiku-4-5,S4_context_growth,2,116032,mid_loop_fired,4,3,89120,96720,0,"requested 44000 uc, only 26912 available"
+anthropic,claude-haiku-4-5,S4_context_growth,3,116032,mid_loop_fired,4,3,89120,96720,0,"requested 44000 uc, only 26912 available"
+anthropic,claude-haiku-4-5,S4_context_growth,4,116032,mid_loop_fired,4,3,89120,96720,0,"requested 44000 uc, only 26912 available"
+openai,gpt-4o-mini-2024-07-18,S1_steady_within_cap,0,38700,completed_within_cap,4,4,12900,3840,0,
+openai,gpt-4o-mini-2024-07-18,S1_steady_within_cap,1,38700,completed_within_cap,4,4,12900,3780,0,
+openai,gpt-4o-mini-2024-07-18,S1_steady_within_cap,2,38700,completed_within_cap,4,4,12900,3780,0,
+openai,gpt-4o-mini-2024-07-18,S1_steady_within_cap,3,38700,completed_within_cap,4,4,12900,3840,0,
+openai,gpt-4o-mini-2024-07-18,S1_steady_within_cap,4,38700,completed_within_cap,4,4,12900,3780,0,
+openai,gpt-4o-mini-2024-07-18,S2_aggregate_overshoot,0,11763,mid_loop_fired,4,3,9795,4845,0,"requested 3270 uc, only 1968 available"
+openai,gpt-4o-mini-2024-07-18,S2_aggregate_overshoot,1,11763,mid_loop_fired,4,3,9795,4845,0,"requested 3270 uc, only 1968 available"
+openai,gpt-4o-mini-2024-07-18,S2_aggregate_overshoot,2,11763,mid_loop_fired,4,3,9795,4365,0,"requested 3270 uc, only 1968 available"
+openai,gpt-4o-mini-2024-07-18,S2_aggregate_overshoot,3,11763,mid_loop_fired,4,3,9795,5625,0,"requested 3270 uc, only 1968 available"
+openai,gpt-4o-mini-2024-07-18,S2_aggregate_overshoot,4,11763,mid_loop_fired,4,3,9795,4545,0,"requested 3270 uc, only 1968 available"
+openai,gpt-4o-mini-2024-07-18,S3_oversized_first_call,0,14238,pre_flight_refused,1,0,0,0,0,"requested 29520 uc, only 14238 available"
+openai,gpt-4o-mini-2024-07-18,S3_oversized_first_call,1,14238,pre_flight_refused,1,0,0,0,0,"requested 29520 uc, only 14238 available"
+openai,gpt-4o-mini-2024-07-18,S3_oversized_first_call,2,14238,pre_flight_refused,1,0,0,0,0,"requested 29520 uc, only 14238 available"
+openai,gpt-4o-mini-2024-07-18,S3_oversized_first_call,3,14238,pre_flight_refused,1,0,0,0,0,"requested 29520 uc, only 14238 available"
+openai,gpt-4o-mini-2024-07-18,S3_oversized_first_call,4,14238,pre_flight_refused,1,0,0,0,0,"requested 29520 uc, only 14238 available"
+openai,gpt-4o-mini-2024-07-18,S4_context_growth,0,20256,mid_loop_fired,4,3,14460,14925,0,"requested 7500 uc, only 5796 available"
+openai,gpt-4o-mini-2024-07-18,S4_context_growth,1,20256,mid_loop_fired,4,3,14460,14925,0,"requested 7500 uc, only 5796 available"
+openai,gpt-4o-mini-2024-07-18,S4_context_growth,2,20256,mid_loop_fired,4,3,14460,14925,0,"requested 7500 uc, only 5796 available"
+openai,gpt-4o-mini-2024-07-18,S4_context_growth,3,20256,mid_loop_fired,4,3,14460,14925,0,"requested 7500 uc, only 5796 available"
+openai,gpt-4o-mini-2024-07-18,S4_context_growth,4,20256,mid_loop_fired,4,3,14460,14925,0,"requested 7500 uc, only 5796 available"

@@ -1,0 +1,75 @@
+{
+  "config": {
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5-20251001",
+    "temperature": 0.0,
+    "recursion_limit": 25,
+    "n_runs": 5,
+    "caps": [
+      1000.0,
+      3000.0,
+      5000.0,
+      7000.0,
+      10000.0
+    ]
+  },
+  "vulnerable": {
+    "n_runs": 5,
+    "outcomes": {
+      "completed": 5
+    },
+    "mean_spent_uc": 9566.6,
+    "stdev_spent_uc": 92.5732142684913,
+    "min_spent_uc": 9401.0,
+    "max_spent_uc": 9608.0,
+    "mean_tool_calls": 8,
+    "max_tool_calls": 8
+  },
+  "cap_analysis": {
+    "1000.0": {
+      "n_runs": 5,
+      "n_fires": 5,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 1,
+      "mean_spend_at_fire_uc": 0.0,
+      "mean_reduction_factor": Infinity
+    },
+    "3000.0": {
+      "n_runs": 5,
+      "n_fires": 5,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 3,
+      "mean_spend_at_fire_uc": 2845.0,
+      "mean_reduction_factor": 3.3626010544815466
+    },
+    "5000.0": {
+      "n_runs": 5,
+      "n_fires": 5,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 4,
+      "mean_spend_at_fire_uc": 4532.0,
+      "mean_reduction_factor": 2.110870128900748
+    },
+    "7000.0": {
+      "n_runs": 5,
+      "n_fires": 5,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": 5,
+      "mean_spend_at_fire_uc": 6762.0,
+      "mean_reduction_factor": 1.414752192756265
+    },
+    "10000.0": {
+      "n_runs": 5,
+      "n_fires": 0,
+      "n_cap_respected": 5,
+      "mean_fires_at_call": null,
+      "mean_spend_at_fire_uc": 9566.6,
+      "mean_reduction_factor": 1.0
+    }
+  },
+  "__totals__": {
+    "n_runs": 5,
+    "wall_sec": 100.16972517967224,
+    "estimated_cost_usd": 0.047833
+  }
+}

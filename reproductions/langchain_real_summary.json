@@ -1,0 +1,113 @@
+{
+  "anthropic/S1_steady_within_cap": {
+    "n_total": 1,
+    "outcomes": {
+      "completed_within_cap": 1
+    },
+    "total_actual_uc": 30640,
+    "total_estimate_uc": 84800,
+    "max_actual_uc": 30640,
+    "cap_violations": 0,
+    "cap_uc": 254400,
+    "mean_actual_uc": 30640.0,
+    "mean_over_reservation_x": 2.7676240208877285
+  },
+  "anthropic/S2_aggregate_overshoot": {
+    "n_total": 1,
+    "outcomes": {
+      "mid_loop_fired": 1
+    },
+    "total_actual_uc": 45680,
+    "total_estimate_uc": 64240,
+    "max_actual_uc": 45680,
+    "cap_violations": 0,
+    "cap_uc": 77136,
+    "mean_actual_uc": 45680.0,
+    "mean_over_reservation_x": 1.4063047285464099
+  },
+  "anthropic/S3_runaway_step": {
+    "n_total": 1,
+    "outcomes": {
+      "completed_within_cap": 1
+    },
+    "total_actual_uc": 67040,
+    "total_estimate_uc": 100400,
+    "max_actual_uc": 67040,
+    "cap_violations": 0,
+    "cap_uc": 150600,
+    "mean_actual_uc": 67040.0,
+    "mean_over_reservation_x": 1.4976133651551313
+  },
+  "anthropic/S4_context_growth": {
+    "n_total": 1,
+    "outcomes": {
+      "completed_within_cap": 1
+    },
+    "total_actual_uc": 29600,
+    "total_estimate_uc": 104000,
+    "max_actual_uc": 29600,
+    "cap_violations": 0,
+    "cap_uc": 142944,
+    "mean_actual_uc": 29600.0,
+    "mean_over_reservation_x": 3.5135135135135136
+  },
+  "openai/S1_steady_within_cap": {
+    "n_total": 1,
+    "outcomes": {
+      "completed_within_cap": 1
+    },
+    "total_actual_uc": 3780,
+    "total_estimate_uc": 12900,
+    "max_actual_uc": 3780,
+    "cap_violations": 0,
+    "cap_uc": 38700,
+    "mean_actual_uc": 3780.0,
+    "mean_over_reservation_x": 3.4126984126984126
+  },
+  "openai/S2_aggregate_overshoot": {
+    "n_total": 1,
+    "outcomes": {
+      "mid_loop_fired": 1
+    },
+    "total_actual_uc": 5385,
+    "total_estimate_uc": 9795,
+    "max_actual_uc": 5385,
+    "cap_violations": 0,
+    "cap_uc": 11763,
+    "mean_actual_uc": 5385.0,
+    "mean_over_reservation_x": 1.818941504178273
+  },
+  "openai/S3_runaway_step": {
+    "n_total": 1,
+    "outcomes": {
+      "completed_within_cap": 1
+    },
+    "total_actual_uc": 11295,
+    "total_estimate_uc": 16575,
+    "max_actual_uc": 11295,
+    "cap_violations": 0,
+    "cap_uc": 24862,
+    "mean_actual_uc": 11295.0,
+    "mean_over_reservation_x": 1.4674634794156707
+  },
+  "openai/S4_context_growth": {
+    "n_total": 1,
+    "outcomes": {
+      "completed_within_cap": 1
+    },
+    "total_actual_uc": 4425,
+    "total_estimate_uc": 15750,
+    "max_actual_uc": 4425,
+    "cap_violations": 0,
+    "cap_uc": 22302,
+    "mean_actual_uc": 4425.0,
+    "mean_over_reservation_x": 3.559322033898305
+  },
+  "__totals__": {
+    "n_total": 8,
+    "wall_time_sec": 40.355555057525635,
+    "total_cap_violations": 0,
+    "total_spent_uc": 197845,
+    "estimated_total_cost_usd": 0.00197845
+  }
+}

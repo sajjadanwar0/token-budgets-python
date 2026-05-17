@@ -1,0 +1,38 @@
+{
+  "vulnerable": {
+    "n_total": 1,
+    "outcomes": {
+      "recursion_limit_hit": 1
+    },
+    "mean_spent_uc": 4815.3,
+    "stdev_spent_uc": 0,
+    "max_spent_uc": 4815.3,
+    "mean_tool_calls": 52,
+    "max_tool_calls": 52
+  },
+  "protected": {
+    "n_total": 1,
+    "outcomes": {
+      "completed": 1
+    },
+    "mean_spent_uc": 1164.9,
+    "stdev_spent_uc": 0,
+    "max_spent_uc": 1164.9,
+    "mean_tool_calls": 11,
+    "max_tool_calls": 11
+  },
+  "bug_prevented": {
+    "vulnerable_mean_uc": 4815.3,
+    "protected_mean_uc": 1164.9,
+    "reduction_factor": 4.133659541591553,
+    "cap_effective": false,
+    "protected_outcomes": {
+      "completed": 1
+    }
+  },
+  "__totals__": {
+    "n_total": 2,
+    "wall_time_sec": 69.11530256271362,
+    "estimated_cost_usd": 0.005980200000000001
+  }
+}

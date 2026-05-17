@@ -1,0 +1,39 @@
+{
+  "vulnerable": {
+    "n_total": 5,
+    "outcomes": {
+      "recursion_limit_hit": 5
+    },
+    "mean_spent_uc": 1983.33,
+    "stdev_spent_uc": 557.4546972624771,
+    "max_spent_uc": 2811.0,
+    "mean_tool_calls": 23.8,
+    "max_tool_calls": 31
+  },
+  "protected": {
+    "n_total": 5,
+    "outcomes": {
+      "budget_exhausted": 5
+    },
+    "mean_spent_uc": 249.72,
+    "stdev_spent_uc": 22.825002738225454,
+    "max_spent_uc": 277.5,
+    "mean_tool_calls": 7.4,
+    "max_tool_calls": 9
+  },
+  "bug_prevention": {
+    "vulnerable_mean_uc": 1983.33,
+    "protected_mean_uc": 249.72,
+    "reduction_factor": 7.942215281114849,
+    "n_budget_exhausted": 5,
+    "n_total_protected": 5,
+    "n_cap_respected": 5
+  },
+  "__totals__": {
+    "n_total": 10,
+    "wall_sec": 265.6384959220886,
+    "estimated_cost_usd": 0.01116525,
+    "cap_uc": 700.0,
+    "model": "gpt-4o-mini-2024-07-18"
+  }
+}
