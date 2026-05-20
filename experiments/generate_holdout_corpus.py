@@ -1,26 +1,7 @@
-#!/usr/bin/env python3
-"""
-generate_holdout_corpus.py — Generate the 100-prompt holdout corpus
-for the pre-registered A1 validation (experiment #6).
-
-Generates a fresh corpus using gpt-4o (NOT Claude — to minimise bias
-toward Anthropic's tokenizer). Each prompt is generated with a
-deterministic seed so the corpus is reproducible.
-
-Output: holdout_corpus.json — committed alongside the pre-registration.
-
-Cost: ~$0.05 (100 short gpt-4o calls).
-
-Usage:
-  export OPENAI_API_KEY=sk-...
-  python3 generate_holdout_corpus.py
-"""
-
 import json
 import os
 import sys
 import time
-
 
 N_PROMPTS = 100
 META_PROMPT = (

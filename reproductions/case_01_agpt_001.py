@@ -1,24 +1,3 @@
-"""
-case_01_agpt_001.py — Reproduction of AGPT-001 with Token Budgets fix.
-
-Catalog entry: AGPT-001 (autogpt, #6, 2023-04)
-Title: "Make Auto-GPT aware of running cost"
-Cluster: budget-primitive-missing
-Failure pattern: Auto-GPT had per-call cost calculations but NO aggregate
-running-cost ceiling. Long agent runs could accumulate $thousands of API
-spend with no protection. Users had to manually monitor billing.
-
-Vulnerable pattern (what AGPT-001 had):
-    for step in plan_steps:
-        call_openai(step)  # tracks cost in a counter, never CAPS
-
-Protected pattern (Token Budgets fix):
-    budget = Budget(initial_uc=cap_uc, max_uc=cap_uc)
-    for step in plan_steps:
-        budget = budget.spend(estimated_cost_uc(step))  # raises if cap exceeded
-        call_openai(step)
-"""
-
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -30,10 +9,6 @@ def estimated_cost_uc(step: str) -> int:
     """Mock cost estimator: 1 micro-cent per byte (conservative byte-length)."""
     return len(step)
 
-
-# ----------------------------------------------------------------------
-# Vulnerable: the AGPT-001 pattern (no aggregate cap)
-# ----------------------------------------------------------------------
 def run_agent_unprotected(plan_steps, dollar_cap_uc):
     """Per-step cost tracking but NO aggregate enforcement."""
     spent = 0

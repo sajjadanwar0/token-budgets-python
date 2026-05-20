@@ -1,26 +1,3 @@
-#!/usr/bin/env python3
-"""
-run_holdout_validation.py — Validate AnthropicEstimator A1 on the
-pre-registered holdout corpus (experiment #6).
-
-For each prompt in holdout_corpus.json:
-  - byte_len = len(prompt.encode("utf-8"))
-  - estimate = byte_len * 2.0    (AnthropicEstimator's margin)
-  - actual   = Anthropic count_tokens API result
-  - ratio    = estimate / actual
-  - a1_holds = ratio >= 1.0
-
-Pre-registered pass criterion: >=95/100 prompts satisfy A1.
-
-Output: holdout_results.csv
-
-Cost: ~$0.05 (100 count_tokens calls).
-
-Usage:
-  export ANTHROPIC_API_KEY=sk-...
-  python3 run_holdout_validation.py
-"""
-
 import csv
 import json
 import os
@@ -93,7 +70,6 @@ def main():
         for r in results:
             w.writerow(r)
 
-    # Summary
     n_holds = sum(1 for r in results if r["a1_holds"])
     n_total = len(results)
     valid_ratios = [r["ratio"] for r in results

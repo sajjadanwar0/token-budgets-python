@@ -1,46 +1,3 @@
-#!/usr/bin/env python3
-"""
-lang_001_real.py — Real-LangChain reproduction of LANG-001 with Budget fix.
-
-LANG-001 catalogue entry:
-  "Agent infinite looping until recursion limit"
-  Cluster: recursion-limit-only-protection
-  Failure pattern: LangGraph's recursion_limit bounds the loop count
-  but says nothing about per-iteration cost. An agent stuck in a
-  tool-retry loop blows through dollars at low recursion depth.
-
-This script reproduces the bug in real LangGraph (no synthetic simulation)
-and demonstrates that the Budget callback prevents the overspend.
-
-Two test conditions, N=5 each:
-  (A) Vulnerable: LangGraph ReAct agent with recursion_limit=25, no budget
-  (B) Protected:  Same agent + LangChainBudgetCallback (cap=2000 uc)
-
-The agent is given a deliberately ambiguous task ("find user ID for
-sajjad@example.com") with a tool that always returns "no exact match,
-try with more context". The agent retries with variations until
-recursion_limit kicks in. Without a budget, total spend is unbounded
-in dollar terms; with a budget, spend is bounded by the cap.
-
-Cost estimate: ~$0.50-$1.00 total (gpt-4o-mini @ ~$0.0001/call × ~30
-calls per vulnerable run × 5 runs = $0.015 vulnerable cost; protected
-runs much cheaper).
-
-Prerequisites:
-  pip install 'langchain>=0.3.0,<0.4.0' \\
-              'langchain-openai>=0.2.0,<0.3.0' \\
-              'langgraph>=0.2.0,<0.4.0'
-
-Usage:
-  export OPENAI_API_KEY=sk-...
-  python3 lang_001_real.py --runs 5 \\
-      --out-csv lang_001_real_results.csv \\
-      --out-json lang_001_real_summary.json
-
-Smoke test (1 run each condition, ~$0.02):
-  python3 lang_001_real.py --smoke
-"""
-
 import argparse
 import csv
 import json
@@ -51,10 +8,6 @@ import statistics
 from dataclasses import dataclass, asdict
 from typing import List, Dict, Optional
 
-
-# ----------------------------------------------------------------------
-# Path setup so we can import the Python port's Budget primitives
-# ----------------------------------------------------------------------
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT_DIR = os.path.join(HERE, "..", "reproductions")
@@ -75,17 +28,7 @@ except ImportError as e:
     print(f"ERROR: langchain_core not installed — {e}", file=sys.stderr)
     sys.exit(1)
 
-
-# The artifact's LangChainBudgetCallback uses LangChain 0.1's
-# response.llm_output["token_usage"] path, which is empty in
-# LangChain 0.2+ (usage moved to response.generations[*][*].message
-# .usage_metadata). We define a self-contained enforcing callback
-# here that uses the new path. The artifact's callback should be
-# updated for the artifact submission; this is the in-experiment
-# fix.
 class LangChainBudgetCallback(BaseCallbackHandler):
-    """Tracks token usage from LangChain 0.2+ usage_metadata and
-    raises BudgetExhausted when running spend exceeds budget."""
 
     def __init__(self, budget, rate_per_input_token_uc=0.15,
                  rate_per_output_token_uc=0.60):
@@ -111,7 +54,6 @@ class LangChainBudgetCallback(BaseCallbackHandler):
             )
 
     def on_llm_end(self, response, **kwargs):
-        # Try LangChain 0.2+ usage_metadata path first
         try:
             for gen_list in response.generations:
                 for gen in gen_list:
@@ -134,7 +76,6 @@ class LangChainBudgetCallback(BaseCallbackHandler):
             raise
         except Exception:
             pass
-        # Fallback to LangChain 0.1 path
         usage = getattr(response, "llm_output", {}).get("token_usage", {})
         if usage:
             cost = (
@@ -147,13 +88,6 @@ class LangChainBudgetCallback(BaseCallbackHandler):
                     f"running spend {self._spent_so_far:.0f} uc "
                     f"exceeded cap {self._cap} uc"
                 )
-
-
-# ----------------------------------------------------------------------
-# Workload — an ambiguous lookup task with a tool that always
-# under-specifies its answer. The agent will keep retrying with
-# variations until recursion_limit kicks in.
-# ----------------------------------------------------------------------
 
 TASK_PROMPT = (
     "I need to find the internal user ID for the email "
@@ -168,22 +102,17 @@ SYSTEM_PROMPT = (
     "is ambiguous, try again with a slightly different query."
 )
 
-# Token rates for gpt-4o-mini (uc per token, consistent with paper)
-# 1 dollar = 100 cents = 1_000_000 micro-cents
-# gpt-4o-mini: $0.15 input / $0.60 output per million tokens
 RATE_IN_UC  = 0.15
 RATE_OUT_UC = 0.60
 
-# Cap for protected runs: 2000 uc = $0.00002, sized so it bounds
-# the vulnerable behaviour at ~10% of the unbounded spend.
 PROTECTED_CAP_UC = 2000
 
 
 @dataclass
 class RunResult:
-    condition: str        # "vulnerable" | "protected"
+    condition: str
     run_index: int
-    outcome: str          # "completed" | "recursion_limit_hit" | "budget_exhausted" | "error"
+    outcome: str
     n_tool_calls: int
     n_llm_calls: int
     total_input_tokens: int
@@ -198,8 +127,6 @@ class RunResult:
 # ----------------------------------------------------------------------
 
 def build_lookup_tool():
-    """A LangChain tool that always under-specifies. By design, the
-    agent will retry with variations until recursion_limit kicks in."""
     try:
         from langchain_core.tools import tool
     except ImportError:
@@ -208,13 +135,6 @@ def build_lookup_tool():
 
     @tool
     def lookup_user(query: str) -> str:
-        """Look up a user by email or username.
-        Args:
-            query: an email or username string to look up.
-        Returns:
-            A diagnostic string about the lookup result.
-        """
-        # Always returns ambiguous — forces agent to retry.
         return (
             f"Looked up '{query}'. Found 3 partial matches but no exact "
             f"match. Try a more specific query, e.g. the full email "
@@ -225,7 +145,6 @@ def build_lookup_tool():
 
 
 def build_agent(model: str, callbacks: Optional[List] = None):
-    """Build a LangGraph ReAct agent with the lookup tool."""
     try:
         from langchain_openai import ChatOpenAI
         from langgraph.prebuilt import create_react_agent
@@ -248,14 +167,7 @@ def build_agent(model: str, callbacks: Optional[List] = None):
     agent = create_react_agent(llm, tools=[tool])
     return agent
 
-
-# ----------------------------------------------------------------------
-# Token counter callback — records cost for both conditions
-# ----------------------------------------------------------------------
-
 class TokenCounter(BaseCallbackHandler):
-    """A LangChain BaseCallbackHandler that records token usage,
-    no enforcement. Used in BOTH conditions for measurement."""
     def __init__(self):
         super().__init__()
         self.input_tokens = 0
@@ -277,13 +189,12 @@ class TokenCounter(BaseCallbackHandler):
                             self.input_tokens += usage.get("input_tokens", 0)
                             self.output_tokens += usage.get("output_tokens", 0)
                             return
-            # Fallback for older LangChain formats
             usage = getattr(response, "llm_output", {}).get("token_usage", {})
             if usage:
                 self.input_tokens += usage.get("prompt_tokens", 0)
                 self.output_tokens += usage.get("completion_tokens", 0)
         except Exception:
-            pass  # best-effort; don't break the run
+            pass
 
     def on_tool_start(self, serialized, input_str, **kwargs):
         self.tool_call_count += 1
@@ -292,13 +203,7 @@ class TokenCounter(BaseCallbackHandler):
         return self.input_tokens * RATE_IN_UC + self.output_tokens * RATE_OUT_UC
 
 
-# ----------------------------------------------------------------------
-# Runner — vulnerable vs protected
-# ----------------------------------------------------------------------
-
 def run_vulnerable(run_index: int, model: str, recursion_limit: int) -> RunResult:
-    """No budget; only recursion_limit guards. Measures unbounded
-    dollar spend at low recursion depth."""
     counter = TokenCounter()
     agent = build_agent(model, callbacks=[counter])
     start = time.time()
@@ -312,9 +217,7 @@ def run_vulnerable(run_index: int, model: str, recursion_limit: int) -> RunResul
             ]},
             config={"recursion_limit": recursion_limit, "callbacks": [counter]},
         )
-        # If we got here without exception and the agent used many
-        # tool calls, the recursion-limit-style runaway is the typical
-        # outcome (LangGraph aborts cleanly at the limit).
+
         if counter.tool_call_count >= recursion_limit // 2:
             outcome = "recursion_limit_hit"
     except Exception as e:
@@ -342,7 +245,6 @@ def run_vulnerable(run_index: int, model: str, recursion_limit: int) -> RunResul
 
 def run_protected(run_index: int, model: str, recursion_limit: int,
                   cap_uc: int) -> RunResult:
-    """Same agent + Budget callback. Cap should fire before recursion limit."""
     counter = TokenCounter()
     budget = Budget(initial_uc=cap_uc, max_uc=cap_uc * 10)
     budget_cb = LangChainBudgetCallback(
@@ -393,11 +295,6 @@ def run_protected(run_index: int, model: str, recursion_limit: int,
         error_msg=error_msg,
     )
 
-
-# ----------------------------------------------------------------------
-# Main
-# ----------------------------------------------------------------------
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--runs", type=int, default=5,
@@ -430,7 +327,6 @@ def main():
     print(f"Replicas per condition: {args.runs}")
     running_spend = 0.0
 
-    # Vulnerable condition first
     print(f"\n--- Vulnerable (no budget) ---")
     for i in range(args.runs):
         r = run_vulnerable(i, args.model, args.recursion_limit)
@@ -447,7 +343,6 @@ def main():
         if r.error_msg:
             print(f"    error: {r.error_msg}")
 
-    # Protected condition
     print(f"\n--- Protected (Budget cap={args.cap_uc} uc) ---")
     for i in range(args.runs):
         r = run_protected(i, args.model, args.recursion_limit, args.cap_uc)
@@ -464,7 +359,6 @@ def main():
         if r.error_msg:
             print(f"    error: {r.error_msg}")
 
-    # Write CSV
     with open(args.out_csv, "w", newline="") as f:
         writer = csv.DictWriter(
             f, fieldnames=list(asdict(all_runs[0]).keys())
@@ -473,7 +367,6 @@ def main():
         for r in all_runs:
             writer.writerow(asdict(r))
 
-    # Summary JSON
     summary = {}
     for cond in ("vulnerable", "protected"):
         runs = [r for r in all_runs if r.condition == cond]
@@ -494,7 +387,6 @@ def main():
             "max_tool_calls": max(tool_calls) if tool_calls else 0,
         }
 
-    # Headline: did the cap actually prevent the overspend?
     if "vulnerable" in summary and "protected" in summary:
         v = summary["vulnerable"]["mean_spent_uc"]
         p = summary["protected"]["mean_spent_uc"]
@@ -516,7 +408,7 @@ def main():
     with open(args.out_json, "w") as f:
         json.dump(summary, f, indent=2)
 
-    print("\n=== Summary ===")
+    print("\n=== Summary===")
     print(f"Total runs:              {len(all_runs)}")
     print(f"Estimated total spend:   ${summary['__totals__']['estimated_cost_usd']:.4f}")
     print(f"Wall time:               {summary['__totals__']['wall_time_sec']:.1f}s")

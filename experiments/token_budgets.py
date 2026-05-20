@@ -1,30 +1,3 @@
-"""
-token_budgets_py — Python port of the Token Budgets affine discipline.
-
-Problem (Reviewers 1, 4): the catalogue is dominated by Python
-frameworks (LangChain, AutoGPT, AutoGen, CrewAI), but the
-discipline is Rust-only. Operators of Python agents cannot
-benefit. Reviewer 4: "the ecosystems that need the fix cannot
-use it."
-
-Fix: this module implements a Budget class that enforces the
-affine discipline at RUNTIME (Python has no compile-time
-affine type system). Any operation that "consumes" the Budget
-(spend, split, merge) sets an internal _consumed=True flag.
-Subsequent operations on the same instance raise AffineViolation.
-
-Trade-off vs Rust:
-- Rust: compile-time integrity (`rustc` rejects bad programs)
-- Python: runtime detection (AffineViolation at the point of misuse)
-
-The cap-soundness guarantee is preserved in both: the arithmetic
-of `spend(amount)` reduces the available capacity by exactly
-`amount`, with no path that admits double-spend.
-
-Drop-in compatibility with LangChain callbacks; see
-LangChainBudgetCallback below.
-"""
-
 from __future__ import annotations
 import threading
 from dataclasses import dataclass, field
@@ -120,12 +93,6 @@ class Budget:
             return Budget(initial_uc=total, max_uc=self.max_uc)
 
 
-# ---------------------------------------------------------------------
-# Pool variant with the typestate-equivalent closure pattern.
-# Mirrors the Rust pool_typestate.rs design at runtime.
-# ---------------------------------------------------------------------
-
-
 class BudgetPool:
     """Multi-tenant pool with closure-based reservation API.
 
@@ -175,13 +142,11 @@ class BudgetPool:
         with self._lock:
             assert actual_uc <= reserved_uc
             self.outstanding_uc -= reserved_uc
-            # Refund the unused portion
             self.available_uc += reserved_uc - actual_uc
 
     def _forfeit_internal(self, reserved_uc: int) -> None:
         with self._lock:
             self.outstanding_uc -= reserved_uc
-            # Forfeit does NOT refund — matches Rust semantics
 
 
 class ReservationReceipt:
@@ -209,7 +174,6 @@ class ReservationReceipt:
         return ResolvedReceipt(value, _private=_PRIVATE_TOKEN)
 
 
-# Sentinel for module-private construction.
 _PRIVATE_TOKEN = object()
 
 
@@ -227,12 +191,6 @@ class ResolvedReceipt(Generic[T]):
                 "ResolvedReceipt cannot be constructed directly; use "
                 "ReservationReceipt.confirm() or forfeit()"
             )
-
-
-# =====================================================================
-# LangChain integration: drop-in callback that enforces a Budget
-# across an entire LangChain agent run.
-# =====================================================================
 
 
 class LangChainBudgetCallback:
@@ -283,17 +241,12 @@ class LangChainBudgetCallback:
             )
 
 
-# =====================================================================
-# Tests
-# =====================================================================
-
 if __name__ == "__main__":
     # Test 1: basic spend
     b = Budget(initial_uc=1000, max_uc=10_000)
     b2 = b.spend(100)
     assert b2.micro_cents() == 900
 
-    # Test 2: double-spend rejected
     try:
         b.spend(50)
     except AffineViolation:
@@ -301,7 +254,6 @@ if __name__ == "__main__":
     else:
         raise AssertionError("expected AffineViolation")
 
-    # Test 3: split conservation
     b = Budget(initial_uc=1000, max_uc=10_000)
     taken, kept = b.split(300)
     assert taken.micro_cents() + kept.micro_cents() == 1000
@@ -313,7 +265,6 @@ if __name__ == "__main__":
     )
     assert result == "agent output"
 
-    # Test 5: pool resource-leak detection
     try:
         pool.with_reservation(500, lambda r: "forgot to resolve")
     except AffineViolation:

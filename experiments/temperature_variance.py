@@ -1,78 +1,17 @@
-#!/usr/bin/env python3
-"""
-temperature_variance_v2.py — Corrected temperature-variance harness.
-
-Bug fixes vs v1 (experiments/temperature_variance.py):
-
-  Bug 1: actual_spent_uc was integer-divided by 1_000_000 and floored
-         to zero on every per-call cost. v2 uses float arithmetic for
-         cost and rounds at the end.
-
-  Bug 2: byte_length_estimate_uc returned raw bytes (with margin), but
-         was compared to cap_uc as if it were micro-cents. v2 keeps
-         everything in micro-cents: byte_length is multiplied by the
-         per-token input rate to produce a real input-cost estimate.
-
-  Bug 3: message history accumulated the full assistant response on
-         every turn, which made the pre-flight estimate exceed the cap
-         after exactly one call. v2 truncates history to (system +
-         most-recent user turn) so multiple calls actually happen.
-
-Design changes for proper variance signal:
-
-  - max_output_tokens raised from 200 → 500. At T=0 the model emits
-    far fewer than 500 tokens naturally, so we no longer artificially
-    truncate to a constant.
-
-  - Default caps recalibrated to allow ~3-5 calls per run before the
-    estimator pre-flights a refusal. This gives variance in n_calls.
-
-  - Workload is a refinement loop: "fix this; elaborate; elaborate;
-    elaborate" mimicking agent retry behaviour. History is trimmed
-    each turn so the prompt doesn't grow without bound.
-
-Cost estimate at default config:
-  ~3-5 calls per run × 80 runs = ~240-400 calls total
-  At ~$0.003/claude call + ~$0.0001/openai call = ~$1-2 total
-
-Usage:
-  export ANTHROPIC_API_KEY=sk-ant-...
-  export OPENAI_API_KEY=sk-...
-  python3 temperature_variance_v2.py \\
-      --n 10 \\
-      --temperatures 0.0 0.3 0.7 1.0 \\
-      --out-csv temperature_variance_v2_results.csv \\
-      --out-json temperature_variance_v2_summary.json
-
-Smoke test first (8 runs, ~$0.02):
-  python3 temperature_variance_v2.py --smoke
-"""
-
 import argparse
 import csv
 import json
-import os
-import sys
 import time
 import statistics
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from typing import List, Dict, Optional
 
-
-# ----------------------------------------------------------------------
-# Pricing — all values in micro-cents per token.
-# 1 dollar = 100 cents = 1_000_000 micro-cents.
-# Therefore $X per million tokens = X micro-cents per token.
-# (Example: $3 / 1M tokens = 3 uc / token.)
-# ----------------------------------------------------------------------
-
 PRICING_UC_PER_TOKEN = {
-    "claude-sonnet-4-5-20250929": {"input": 3.0,  "output": 15.0},   # $3 / $15 per MT
+    "claude-sonnet-4-5-20250929": {"input": 3.0,  "output": 15.0},
     "claude-sonnet-4-20250514":   {"input": 3.0,  "output": 15.0},
-    "gpt-4o-mini-2024-07-18":     {"input": 0.15, "output": 0.60},   # $0.15 / $0.60 per MT
-    "gpt-4o-2024-08-06":          {"input": 2.50, "output": 10.0},   # $2.50 / $10 per MT
+    "gpt-4o-mini-2024-07-18":     {"input": 0.15, "output": 0.60},
+    "gpt-4o-2024-08-06":          {"input": 2.50, "output": 10.0},
 }
-
 
 def rates_for(model: str) -> Dict[str, float]:
     if model in PRICING_UC_PER_TOKEN:
@@ -84,22 +23,13 @@ def rates_for(model: str) -> Dict[str, float]:
     return {"input": 1.0, "output": 3.0}
 
 
-# ----------------------------------------------------------------------
-# Caps — calibrated to allow ~3-5 calls before the cap fires.
-# These are real micro-cents (consistent units throughout).
-# ----------------------------------------------------------------------
-
 DEFAULT_CAPS_UC = {
-    "claude-sonnet-4-5-20250929": 30_000,   # ~3-5 sonnet calls @ ~3-5k uc each
+    "claude-sonnet-4-5-20250929": 30_000,
     "claude-sonnet-4-20250514":   30_000,
-    "gpt-4o-mini-2024-07-18":     1_500,    # ~3-5 mini calls @ ~300 uc each
-    "gpt-4o-2024-08-06":          25_000,   # ~3-5 gpt-4o calls @ ~5-7k uc each
+    "gpt-4o-mini-2024-07-18":     1_500,
+    "gpt-4o-2024-08-06":          25_000,
 }
 
-
-# ----------------------------------------------------------------------
-# Workload — refinement loop with bounded history
-# ----------------------------------------------------------------------
 
 SYSTEM_PROMPT = (
     "You are a debugging assistant. The user describes a Python "
@@ -114,9 +44,9 @@ INITIAL_USER_MSG = (
 
 ELABORATE_USER_MSG = "elaborate"
 
-MAX_RETRIES = 8                   # generous upper bound on calls per run
-MAX_OUTPUT_TOKENS = 500           # loose; temperature can vary natural length
-SAFETY_MARGIN_ANTHROPIC = 2.0     # matches AnthropicEstimator default
+MAX_RETRIES = 8
+MAX_OUTPUT_TOKENS = 500
+SAFETY_MARGIN_ANTHROPIC = 2.0
 
 
 @dataclass
@@ -125,27 +55,15 @@ class Run:
     temperature: float
     cap_uc: int
     run_index: int
-    outcome: str                  # "completed_within_cap" | "mid_loop_fired" | "pre_flight_refused" | "max_retries_exhausted" | "error"
+    outcome: str
     n_calls_made: int
     total_input_tokens: int
     total_output_tokens: int
-    actual_spent_uc: float        # FLOAT to avoid integer-divide-to-zero bug
-    pre_flight_estimate_uc: float # what the estimator predicted just before cap fired
+    actual_spent_uc: float
+    pre_flight_estimate_uc: float
     error_msg: Optional[str] = None
 
-
-# ----------------------------------------------------------------------
-# Estimator (consistent micro-cent units throughout)
-# ----------------------------------------------------------------------
-
 def estimate_call_uc(prompt_text: str, model: str, max_output_tokens: int) -> float:
-    """
-    Pre-flight cost estimate for one LLM call, in micro-cents.
-    Uses byte-length as a conservative input-token estimate (bytes ≥
-    BPE tokens for any byte-level tokenizer), then multiplies by per-
-    token rate. Includes a 2.0× margin for Anthropic models, matching
-    AnthropicEstimator's default.
-    """
     rates = rates_for(model)
     margin = SAFETY_MARGIN_ANTHROPIC if "claude" in model.lower() else 1.0
     input_token_est = len(prompt_text.encode("utf-8")) * margin
@@ -157,11 +75,6 @@ def estimate_call_uc(prompt_text: str, model: str, max_output_tokens: int) -> fl
 def actual_call_uc(input_tokens: int, output_tokens: int, model: str) -> float:
     rates = rates_for(model)
     return input_tokens * rates["input"] + output_tokens * rates["output"]
-
-
-# ----------------------------------------------------------------------
-# Anthropic runner
-# ----------------------------------------------------------------------
 
 def run_anthropic(model: str, temperature: float, cap_uc: int,
                   run_index: int) -> Run:
@@ -181,10 +94,8 @@ def run_anthropic(model: str, temperature: float, cap_uc: int,
     total_input = 0
     total_output = 0
     last_assistant_text: Optional[str] = None
-    pre_flight_estimate_at_fire = 0.0
 
     for call_index in range(MAX_RETRIES):
-        # Build messages for this turn — bounded history (last assistant + new user)
         if call_index == 0:
             user_msg = INITIAL_USER_MSG
             messages = [{"role": "user", "content": user_msg}]
@@ -196,7 +107,6 @@ def run_anthropic(model: str, temperature: float, cap_uc: int,
                 {"role": "user", "content": user_msg},
             ]
 
-        # Pre-flight check — what would this call cost if it ran?
         full_prompt = SYSTEM_PROMPT + json.dumps(messages)
         est = estimate_call_uc(full_prompt, model, MAX_OUTPUT_TOKENS)
         if spent_uc + est > cap_uc:
@@ -209,7 +119,6 @@ def run_anthropic(model: str, temperature: float, cap_uc: int,
                        actual_spent_uc=spent_uc,
                        pre_flight_estimate_uc=est)
 
-        # Make the call
         try:
             response = client.messages.create(
                 model=model,
@@ -229,8 +138,6 @@ def run_anthropic(model: str, temperature: float, cap_uc: int,
             )
 
             if response.stop_reason == "end_turn" and call_index >= 2:
-                # Model converged on a final answer after at least 3 turns;
-                # legitimate self-termination.
                 return Run(model=model, temperature=temperature, cap_uc=cap_uc,
                            run_index=run_index, outcome="completed_within_cap",
                            n_calls_made=n_calls,
@@ -249,7 +156,6 @@ def run_anthropic(model: str, temperature: float, cap_uc: int,
                        pre_flight_estimate_uc=0.0,
                        error_msg=str(e))
 
-    # Exhausted MAX_RETRIES without cap firing — should be rare with these caps
     return Run(model=model, temperature=temperature, cap_uc=cap_uc,
                run_index=run_index, outcome="max_retries_exhausted",
                n_calls_made=n_calls,
@@ -257,11 +163,6 @@ def run_anthropic(model: str, temperature: float, cap_uc: int,
                total_output_tokens=total_output,
                actual_spent_uc=spent_uc,
                pre_flight_estimate_uc=0.0)
-
-
-# ----------------------------------------------------------------------
-# OpenAI runner — same shape as Anthropic, GPT-4o family
-# ----------------------------------------------------------------------
 
 def run_openai(model: str, temperature: float, cap_uc: int,
                run_index: int) -> Run:
@@ -352,10 +253,6 @@ def run_openai(model: str, temperature: float, cap_uc: int,
                pre_flight_estimate_uc=0.0)
 
 
-# ----------------------------------------------------------------------
-# Main
-# ----------------------------------------------------------------------
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--n", type=int, default=10,
@@ -374,10 +271,8 @@ def main():
 
     if args.smoke:
         args.n = 1
-        # smoke test runs a single claude + single openai model
         args.models = ["claude-sonnet-4-5-20250929", "gpt-4o-mini-2024-07-18"]
 
-    # Pick default models from the user's --models (claude-sonnet + gpt-4o-mini)
     if not args.models:
         args.models = ["claude-sonnet-4-5-20250929", "gpt-4o-mini-2024-07-18"]
 
@@ -404,14 +299,12 @@ def main():
                     f"(running $: {estimated_spend_running:.4f})"
                 )
 
-    # Write CSV
     with open(args.out_csv, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(asdict(all_runs[0]).keys()))
         writer.writeheader()
         for r in all_runs:
             writer.writerow(asdict(r))
 
-    # Summary JSON with proper statistics
     summary: Dict = {}
     cell_groups: Dict[tuple, List[Run]] = {}
     for r in all_runs:

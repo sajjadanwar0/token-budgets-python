@@ -1,43 +1,3 @@
-#!/usr/bin/env python3
-"""
-lang_001_trace.py — Trace-analysis demonstration of LANG-001 prevention.
-
-Replaces lang_001_real.py's callback-enforcement approach with a cleaner
-trace-analysis approach.
-
-Rationale: LangChain swallows callback exceptions internally. A
-BudgetExhausted raised from on_llm_start/on_llm_end is logged as a
-callback error and the agent loop continues. This is documented
-LangChain behaviour and is not a bug in the Budget discipline. The
-discipline's correctness can be established from the per-call spend
-trace without requiring callback-level enforcement to fire.
-
-Method:
-  1. Run vulnerable LangGraph ReAct agent (no enforcement) with
-     detailed TokenCounter that records cumulative spend per LLM call.
-  2. From the trace, post-hoc compute: at various cap levels,
-     when does the Budget discipline first fire (running spend would
-     exceed cap)? What is the resulting spend bound?
-  3. Report per-cap-level analysis: discipline fires at call N,
-     bounds spend at ≤cap, reduction factor vs unbounded.
-
-This separates the mathematical claim of the discipline (cap-respecting)
-from its LangChain integration (a separate engineering concern).
-
-Prerequisites: same as lang_001_real.py
-  pip install 'langchain>=0.3,<0.4' 'langchain-openai>=0.2,<0.3' \\
-              'langgraph>=0.2,<0.4' 'langchain-core>=0.3,<0.4'
-
-Usage:
-  export OPENAI_API_KEY=sk-...
-  python3 lang_001_trace.py --runs 5 \\
-      --out-csv lang_001_trace_results.csv \\
-      --out-json lang_001_trace_summary.json
-
-Smoke test:
-  python3 lang_001_trace.py --smoke
-"""
-
 import argparse
 import csv
 import json
@@ -45,11 +5,10 @@ import os
 import sys
 import time
 import statistics
-from dataclasses import dataclass, asdict, field
-from typing import List, Dict, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import List, Dict, Optional
 
 
-# Cost rates (gpt-4o-mini, micro-cents per token)
 RATE_IN_UC  = 0.15
 RATE_OUT_UC = 0.60
 
@@ -69,19 +28,17 @@ SYSTEM_PROMPT = (
 
 @dataclass
 class CallTelemetry:
-    """Per-LLM-call telemetry recorded during a run."""
-    call_index: int               # 0-based
+    call_index: int
     input_tokens: int
     output_tokens: int
-    cost_uc: float                # for this call alone
-    cumulative_uc: float          # running total after this call
+    cost_uc: float
+    cumulative_uc: float
 
 
 @dataclass
 class RunTrace:
-    """Full trace of one vulnerable agent run."""
     run_index: int
-    outcome: str                  # "completed" | "recursion_limit_hit" | "error"
+    outcome: str
     n_tool_calls: int
     n_llm_calls: int
     calls: List[CallTelemetry] = field(default_factory=list)
@@ -94,21 +51,13 @@ class RunTrace:
 
 @dataclass
 class CapAnalysis:
-    """Post-hoc: where would Budget(cap) have fired in this trace?"""
     cap_uc: float
-    fires_at_call: Optional[int]  # 1-based; None if cap never crossed
+    fires_at_call: Optional[int]
     spend_at_fire_uc: Optional[float]
-    cap_respected: bool           # spend_at_fire ≤ cap
-    reduction_factor: float       # unbounded_total / bounded_total
-
-
-# ----------------------------------------------------------------------
-# Callback that records per-call telemetry (no enforcement)
-# ----------------------------------------------------------------------
+    cap_respected: bool
+    reduction_factor: float
 
 def make_telemetry_callback():
-    """Returns a BaseCallbackHandler subclass that records per-call
-    input/output tokens to a shared list. No enforcement."""
     from langchain_core.callbacks import BaseCallbackHandler
 
     class TelemetryHandler(BaseCallbackHandler):
@@ -142,7 +91,7 @@ def make_telemetry_callback():
                                 cumulative_uc=self._cumulative_uc,
                             ))
                             return
-            # Fallback for older LangChain
+
             usage = getattr(response, "llm_output", {}).get("token_usage", {})
             if usage:
                 in_t = usage.get("prompt_tokens", 0)
@@ -168,12 +117,6 @@ def build_agent_and_tool(model: str, callbacks):
 
     @tool
     def lookup_user(query: str) -> str:
-        """Look up a user by email or username.
-        Args:
-            query: an email or username string to look up.
-        Returns:
-            A diagnostic string about the lookup result.
-        """
         return (
             f"Looked up '{query}'. Found 3 partial matches but no exact "
             f"match. Try a more specific query, e.g. the full email "
@@ -186,7 +129,6 @@ def build_agent_and_tool(model: str, callbacks):
 
 def run_vulnerable_with_telemetry(run_index: int, model: str,
                                   recursion_limit: int) -> RunTrace:
-    """Run the vulnerable agent and record per-call telemetry."""
     tele = make_telemetry_callback()
     agent = build_agent_and_tool(model, callbacks=[tele])
     start = time.time()
@@ -221,27 +163,10 @@ def run_vulnerable_with_telemetry(run_index: int, model: str,
         error_msg=error_msg,
     )
 
-
-# ----------------------------------------------------------------------
-# Post-hoc trace analysis
-# ----------------------------------------------------------------------
-
 def analyze_trace_at_cap(trace: RunTrace, cap_uc: float) -> CapAnalysis:
-    """Replay the trace under a Budget discipline with given cap.
-
-    The discipline's pre-flight check fires if (running spend + this
-    call's estimated cost) > cap. We model the estimate as the actual
-    cost (a tight estimator; in practice the byte-length estimator
-    over-estimates, which would fire the cap earlier).
-
-    Conservative model (matches paper): fire when running_spend +
-    next_call_cost > cap. This is the latest possible firing point.
-    """
     cumulative = 0.0
     for i, call in enumerate(trace.calls):
-        # Pre-flight check for this call: would running + this_call_cost exceed cap?
         if cumulative + call.cost_uc > cap_uc:
-            # Discipline fires here. The call is REFUSED, so spend stays at cumulative.
             return CapAnalysis(
                 cap_uc=cap_uc,
                 fires_at_call=i + 1,                       # 1-based
@@ -251,7 +176,6 @@ def analyze_trace_at_cap(trace: RunTrace, cap_uc: float) -> CapAnalysis:
                 if cumulative > 0 else float('inf'),
             )
         cumulative += call.cost_uc
-    # Cap never crossed
     return CapAnalysis(
         cap_uc=cap_uc,
         fires_at_call=None,
@@ -260,10 +184,6 @@ def analyze_trace_at_cap(trace: RunTrace, cap_uc: float) -> CapAnalysis:
         reduction_factor=1.0,
     )
 
-
-# ----------------------------------------------------------------------
-# Main
-# ----------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser()
@@ -325,7 +245,6 @@ def main():
                     f"{c.cost_uc:.2f}", f"{c.cumulative_uc:.2f}",
                 ])
 
-    # Post-hoc: at each cap level, what happens to each trace?
     print(f"\n--- Post-hoc analysis: at each cap, where does the discipline fire? ---")
     cap_results: Dict[float, List[CapAnalysis]] = {}
     for cap in args.caps:
@@ -344,7 +263,6 @@ def main():
                 f"cap_respected={an.cap_respected}"
             )
 
-    # Aggregate summary
     summary = {
         "vulnerable": {
             "n_runs": len(traces),

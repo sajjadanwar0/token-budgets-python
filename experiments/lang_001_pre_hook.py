@@ -1,42 +1,3 @@
-#!/usr/bin/env python3
-"""
-lang_001_pre_hook.py — Real-enforcement LANG-001 experiment via
-LangGraph's pre_model_hook.
-
-This is the deployable enforcement vector for the LangChain ecosystem.
-Unlike the callback path (which LangChain swallows), the pre_model_hook
-runs BEFORE each LLM call inside LangGraph's main loop. Raising
-BudgetExhausted from the hook short-circuits the loop and propagates
-out through agent.invoke().
-
-Compared with lang_001_trace.py (post-hoc trace analysis), this script
-runs ACTUAL ENFORCEMENT. The vulnerable runs are identical; the
-protected runs differ in that the cap fires AT THE PRE_MODEL_HOOK,
-aborting the agent before the offending LLM call executes.
-
-Prerequisites:
-  - langgraph >= 0.3 (pre_model_hook support)
-  - langchain-openai >= 0.2
-  - token_budgets (patched per token_budgets_v2.py)
-
-Usage:
-  export OPENAI_API_KEY=sk-...
-  python3 lang_001_pre_hook.py --smoke               # 1 vulnerable + 1 protected
-  python3 lang_001_pre_hook.py --runs 5 --cap-uc 700 # full experiment
-
-Smoke success criteria:
-  Vulnerable: outcome=recursion_limit_hit, n_tool_calls=25+, spent_uc=1500+
-  Protected:  outcome=budget_exhausted,    n_tool_calls<=5, spent_uc<=cap_uc
-
-If protected says outcome=completed: cap is too loose OR pre_model_hook
-is not available in your LangGraph version. Check with:
-  python3 -c "import inspect; from langgraph.prebuilt import \
-      create_react_agent; print('pre_model_hook' in \
-      inspect.signature(create_react_agent).parameters)"
-
-Cost: ~$0.05 for the full 5-replica experiment, ~3-5 minutes.
-"""
-
 import argparse
 import csv
 import json
@@ -48,7 +9,6 @@ from dataclasses import dataclass, asdict
 from typing import List, Optional
 
 
-# Project-relative import of token_budgets
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT_DIR = os.path.join(HERE, "..", "reproductions")
 if os.path.isdir(PORT_DIR):
@@ -76,25 +36,21 @@ SYSTEM_PROMPT = (
     "is ambiguous, try again with a slightly different query."
 )
 
-# gpt-4o-mini rates in micro-cents per token
-# ($0.15 input / $0.60 output per million tokens)
 RATE_IN_UC  = 0.15
 RATE_OUT_UC = 0.60
 
-# Conservative output estimate per call for pre-flight check
 EST_OUTPUT_TOKENS = 500
 
 
 @dataclass
 class RunResult:
-    condition: str               # "vulnerable" | "protected"
+    condition: str
     run_index: int
-    outcome: str                 # "completed" | "recursion_limit_hit"
-    # | "budget_exhausted" | "error"
+    outcome: str
     n_tool_calls: int
     n_llm_calls: int
-    spent_uc: float              # tracked via post-call accumulator
-    pre_hook_fired_at_call: Optional[int]  # 1-based; None if never fired
+    spent_uc: float
+    pre_hook_fired_at_call: Optional[int]
     wall_sec: float
     error_msg: Optional[str] = None
 
@@ -104,12 +60,6 @@ def _build_lookup_tool():
 
     @tool
     def lookup_user(query: str) -> str:
-        """Look up a user by email or username.
-        Args:
-            query: an email or username string to look up.
-        Returns:
-            A diagnostic string about the lookup result.
-        """
         return (
             f"Looked up '{query}'. Found 3 partial matches but no exact "
             f"match. Try a more specific query, e.g. the full email "
@@ -119,9 +69,6 @@ def _build_lookup_tool():
 
 
 def _build_token_counter_callback(state: dict):
-    """Returns a BaseCallbackHandler that updates state['spent_uc'] and
-    state['n_llm_calls'] after each LLM call. state['tool_calls']
-    counts tool starts. Pure observer (no enforcement)."""
     from langchain_core.callbacks import BaseCallbackHandler
 
     class _CB(BaseCallbackHandler):
@@ -167,31 +114,18 @@ def _build_token_counter_callback(state: dict):
 
 
 def _build_pre_model_hook(cap_uc: float, state: dict):
-    """Returns a function suitable for LangGraph's pre_model_hook
-    parameter. The hook examines the message history before each LLM
-    call, estimates the call's cost conservatively, and raises
-    BudgetExhausted if running_spend + estimate would exceed cap."""
-
     def hook(graph_state):
-        """LangGraph pre_model_hook signature: receives the graph state
-        before each LLM call and returns the (possibly modified) state.
-        Raising any exception aborts the agent loop."""
-        # The graph state's 'messages' key contains the conversation so far
         msgs = graph_state.get("messages", [])
-        # Concatenate all message content as the prompt-size estimate
         prompt_text = ""
         for m in msgs:
             c = getattr(m, "content", None)
             if isinstance(c, str):
                 prompt_text += c
             elif isinstance(c, list):
-                # Multimodal content: count string parts only
                 for part in c:
                     if isinstance(part, dict) and isinstance(part.get("text"), str):
                         prompt_text += part["text"]
-        # Conservative estimate: byte_length * rate_in + max_output * rate_out
         est = len(prompt_text.encode("utf-8")) * RATE_IN_UC + EST_OUTPUT_TOKENS * RATE_OUT_UC
-        # Pre-flight check
         if state["spent_uc"] + est > cap_uc:
             state["pre_hook_fired_at_call"] = state["n_llm_calls"] + 1
             raise BudgetExhausted(
@@ -205,8 +139,7 @@ def _build_pre_model_hook(cap_uc: float, state: dict):
 
 def run_one(condition: str, run_index: int, model: str,
             recursion_limit: int, cap_uc: Optional[float]) -> RunResult:
-    """Run one trial. condition is 'vulnerable' (no hook) or 'protected'
-    (pre_model_hook installed with cap_uc)."""
+
     from langchain_openai import ChatOpenAI
     from langgraph.prebuilt import create_react_agent
 
@@ -218,7 +151,6 @@ def run_one(condition: str, run_index: int, model: str,
     llm = ChatOpenAI(model=model, temperature=0.7, callbacks=[counter_cb])
     lookup_tool = _build_lookup_tool()
 
-    # Build agent — install pre_model_hook only in the protected condition
     if condition == "protected":
         if cap_uc is None:
             raise ValueError("protected condition requires cap_uc")
@@ -228,7 +160,6 @@ def run_one(condition: str, run_index: int, model: str,
                 llm, tools=[lookup_tool], pre_model_hook=hook,
             )
         except TypeError as e:
-            # pre_model_hook not supported in this LangGraph version
             return RunResult(
                 condition=condition, run_index=run_index, outcome="error",
                 n_tool_calls=0, n_llm_calls=0, spent_uc=0.0,
@@ -249,8 +180,7 @@ def run_one(condition: str, run_index: int, model: str,
             {"messages": [("system", SYSTEM_PROMPT), ("user", TASK_PROMPT)]},
             config={"recursion_limit": recursion_limit, "callbacks": [counter_cb]},
         )
-        # If the agent finished without exception but with many tool calls,
-        # the recursion_limit-style termination is the typical mode.
+
         if state["tool_calls"] >= recursion_limit // 2:
             outcome = "recursion_limit_hit"
     except BudgetExhausted as e:
@@ -305,7 +235,6 @@ def main():
     print(f"Cap (protected): {args.cap_uc} uc")
     print(f"Replicas:        {args.runs} per condition")
 
-    # Vulnerable first
     print(f"\n--- Vulnerable (no pre_model_hook) ---")
     for i in range(args.runs):
         r = run_one("vulnerable", i, args.model, args.recursion_limit, None)
@@ -320,7 +249,6 @@ def main():
         if r.error_msg:
             print(f"    error: {r.error_msg}")
 
-    # Protected with pre_model_hook
     print(f"\n--- Protected (pre_model_hook cap={args.cap_uc} uc) ---")
     for i in range(args.runs):
         r = run_one("protected", i, args.model, args.recursion_limit, args.cap_uc)
@@ -337,14 +265,12 @@ def main():
         if r.error_msg:
             print(f"    error: {r.error_msg}")
 
-    # CSV
     with open(args.out_csv, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(asdict(all_runs[0]).keys()))
         w.writeheader()
         for r in all_runs:
             w.writerow(asdict(r))
 
-    # Summary JSON
     summary = {}
     for cond in ("vulnerable", "protected"):
         rs = [r for r in all_runs if r.condition == cond]
@@ -364,7 +290,7 @@ def main():
             "mean_tool_calls": statistics.mean(tools),
             "max_tool_calls": max(tools),
         }
-    # Bug-prevention headline
+
     if "vulnerable" in summary and "protected" in summary:
         v = summary["vulnerable"]["mean_spent_uc"]
         p = summary["protected"]["mean_spent_uc"]

@@ -1,37 +1,3 @@
-#!/usr/bin/env python3
-"""
-lang_001_trace_v2.py — Multi-provider, multi-temperature trace analysis.
-
-Extends lang_001_trace.py with --provider and --temperature flags so the
-LANG-001 case study can be replicated across model / temperature cells.
-
-Supported providers: openai, anthropic
-  - openai requires: pip install langchain-openai (already needed)
-  - anthropic requires: pip install langchain-anthropic
-
-Usage (single cell):
-  python3 lang_001_trace_v2.py --runs 5 \\
-      --provider openai --model gpt-4o-mini-2024-07-18 \\
-      --temperature 0.0 \\
-      --caps 300 500 700 1000 2000 \\
-      --out-csv lang_001_trace_openai_t0.csv \\
-      --out-json lang_001_trace_openai_t0.json
-
-Usage (full sweep, 4 cells):
-  for prov in openai anthropic; do
-    for temp in 0.0 0.7; do
-      python3 lang_001_trace_v2.py --runs 5 \\
-        --provider $prov --temperature $temp \\
-        --out-csv "lang_001_${prov}_t${temp}.csv" \\
-        --out-json "lang_001_${prov}_t${temp}.json"
-    done
-  done
-  # ~$2-5 total across 20 runs
-
-Smoke test (1 run):
-  python3 lang_001_trace_v2.py --smoke --provider openai
-"""
-
 import argparse
 import csv
 import json
@@ -39,18 +5,15 @@ import os
 import statistics
 import sys
 import time
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, field
 from typing import List, Optional, Dict
 
 
-# Project-relative import
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT_DIR = os.path.join(HERE, "..", "reproductions")
 if os.path.isdir(PORT_DIR):
     sys.path.insert(0, PORT_DIR)
 
-# Provider-specific rate tables (micro-cents per token).
-# 1 dollar = 1,000,000 uc, so $X/MT = X uc/token.
 RATES = {
     "openai": {
         "gpt-4o-mini-2024-07-18": {"in": 0.15, "out": 0.60},
@@ -194,7 +157,6 @@ def _build_llm(provider: str, model: str, temperature: float, callbacks):
         except ImportError:
             sys.exit("ERROR: langchain-anthropic not installed. "
                      "pip install 'langchain-anthropic>=0.2,<0.3'")
-        # ChatAnthropic uses max_tokens not max_tokens_to_sample in 0.2+
         return ChatAnthropic(
             model=model, temperature=temperature,
             max_tokens=512, callbacks=callbacks,
@@ -209,12 +171,6 @@ def _build_agent(provider: str, model: str, temperature: float, callbacks):
 
     @tool
     def lookup_user(query: str) -> str:
-        """Look up a user by email or username.
-        Args:
-            query: an email or username string to look up.
-        Returns:
-            A diagnostic string about the lookup result.
-        """
         return (
             f"Looked up '{query}'. Found 3 partial matches but no exact "
             f"match. Try a more specific query, e.g. the full email "
@@ -332,7 +288,6 @@ def main():
         if tr.error_msg:
             print(f"    error: {tr.error_msg}")
 
-    # CSV: one row per LLM call across all runs
     with open(args.out_csv, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow([
@@ -348,7 +303,6 @@ def main():
                     f"{c.cost_uc:.4f}", f"{c.cumulative_uc:.4f}",
                 ])
 
-    # Cap analysis
     print(f"\n--- Post-hoc cap analysis ---")
     cap_results: Dict[float, List[CapAnalysis]] = {}
     for cap in args.caps:
@@ -364,7 +318,6 @@ def main():
                      f"bounded {an.spend_at_fire_uc:.0f} uc")
             print(f"  run {tr.run_index}: {s}, reduction={an.reduction_factor:.1f}x")
 
-    # Summary JSON
     summary = {
         "config": {
             "provider": args.provider, "model": args.model,

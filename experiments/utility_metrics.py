@@ -1,38 +1,9 @@
-"""
-utility_metrics.py — Analyze existing experiment CSVs for utility metrics.
-
-Computes for each (model, workload, cap) cell:
-
-  1. Capital efficiency: (mean_actual_spent / cap) — how much of the cap
-     is actually used. Low values indicate over-reservation.
-
-  2. False rejection rate: # runs where the discipline refused a call
-     that, in retrospect, would have fit within cap.
-
-  3. Task completion rate: # runs where the agent completed its work
-     within cap.
-
-  4. Over-reservation ratio: (mean_reserved / mean_actual_spent) — how
-     much the conservative estimator inflates the reserved amount above
-     the actual billed cost.
-
-Usage:
-    python3 utility_metrics.py \
-        --boundary-csv data/boundary_runs.csv \
-        --production-csv data/production_tier_validation_results.csv \
-        --cap-sweep-csv data/production_tier_cap_sweep_results.csv
-
-The script expects CSVs with columns: model, workload, cap_uc, outcome,
-actual_spent_uc (optional), reserved_uc (optional). Adjust column names
-below if your CSVs differ.
-"""
-
 import argparse
 import csv
 import os
 import statistics
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 def read_csv(path: str) -> List[Dict[str, str]]:
@@ -60,7 +31,6 @@ def compute_cell_metrics(rows: List[Dict[str, str]],
         n_total = len(cell_rows)
         cap_uc = float(key[2]) if key[2] else 0.0
 
-        # Outcome buckets — outcomes vary by harness; tolerate different naming
         n_completed = 0
         n_refused_preflight = 0
         n_mid_loop_fired = 0
@@ -95,21 +65,13 @@ def compute_cell_metrics(rows: List[Dict[str, str]],
         mean_spent = statistics.mean(spent_amounts) if spent_amounts else 0.0
         mean_reserved = statistics.mean(reserved_amounts) if reserved_amounts else None
 
-        # Capital efficiency: how much of the cap is actually used (committed)?
         capital_eff = mean_spent / cap_uc if cap_uc > 0 else 0.0
 
-        # Over-reservation: how much larger is reserved vs actual?
         over_reservation = (mean_reserved / mean_spent
                             if mean_reserved and mean_spent > 0 else None)
 
-        # Task completion rate
         completion_rate = (n_completed / n_total) if n_total > 0 else 0.0
 
-        # False-rejection rate proxy:
-        # If pre-flight refused but cap > mean_spent, it would have fit.
-        # We can't know per-run whether a refused call would have fit
-        # without simulating; report the bound as: refusals where the
-        # cell's MEAN spent < cap.
         if mean_spent > 0 and mean_spent < cap_uc:
             potential_false_rejections = n_refused_preflight
         else:
