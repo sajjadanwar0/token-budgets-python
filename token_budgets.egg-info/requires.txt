@@ -4,4 +4,5 @@ langchain-anthropic>=1.4.3
 langchain-core>=1.4.0
 langchain-openai>=1.2.1
 langgraph>=1.2.0
+mypy>=2.1.0
 openai>=2.37.0

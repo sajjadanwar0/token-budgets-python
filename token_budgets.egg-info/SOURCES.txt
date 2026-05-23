@@ -1,3 +1,5 @@
+LICENSE-APACHE
+LICENSE-MIT
 README.md
 pyproject.toml
 token_budgets.egg-info/PKG-INFO
