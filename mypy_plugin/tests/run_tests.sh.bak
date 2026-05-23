@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -u
+
+cd "$(dirname "$0")"
+
+PASS=0
+FAIL=0
+
+check_fail() {
+    local fixture=$1
+    local pattern=$2
+    if  -m mypy --config-file=mypy.ini "$fixture" 2>&1 | grep -q -- "$pattern"; then
+        echo "[PASS] $fixture (correctly flagged: $pattern)"
+        PASS=$((PASS + 1))
+    else
+        echo "[FAIL] $fixture (did not flag: $pattern)"
+        echo "       full output:"
+         -m mypy --config-file=mypy.ini "$fixture" 2>&1 | sed 's/^/         /'
+        FAIL=$((FAIL + 1))
+    fi
+}
+
+check_pass() {
+    local fixture=$1
+    if  -m mypy --config-file=mypy.ini "$fixture" 2>&1 | grep -q "tb-double-use\|tb-consumed-param"; then
+        echo "[FAIL] $fixture (false positive: legitimate code flagged)"
+         -m mypy --config-file=mypy.ini "$fixture" 2>&1 | sed 's/^/         /'
+        FAIL=$((FAIL + 1))
+    else
+        echo "[PASS] $fixture (cleanly accepted)"
+        PASS=$((PASS + 1))
+    fi
+}
+
+echo "=== Production Mypy plugin: test suite ==="
+echo
+check_fail  test_interprocedural.py  "already consumed by call to consume_it"
+check_fail  test_async.py            "already consumed by call to async_consume"
+check_fail  test_branch.py           "already consumed"
+check_fail  test_module_level.py     "GLOBAL_BUDGET.*already consumed"
+check_pass  test_container.py
+check_pass  test_legitimate_complex.py
+
+echo
+echo "Summary: $PASS PASS, $FAIL FAIL"
+exit $FAIL

@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: token-budgets-mypy
+Version: 0.2.0
+Summary: Production-grade Mypy plugin for affine Budget enforcement
+Requires-Python: >=3.10
+Requires-Dist: mypy>=1.8.0
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
