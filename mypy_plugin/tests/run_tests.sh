@@ -13,8 +13,6 @@ fi
 PASS=0
 FAIL=0
 
-# A test passes if the EXPECTED pattern appears in mypy's output for
-# this fixture AND mypy did not crash with an INTERNAL ERROR.
 check_fail() {
     local fixture=$1
     local pattern=$2
