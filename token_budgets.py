@@ -49,6 +49,31 @@ class Budget:
             self._check_alive()
             return self.initial_uc
 
+    def __copy__(self):
+        raise AffineViolation(
+            "Budget cannot be copied: this would create two budgets sharing "
+            "the same _consumed state, defeating the affine discipline. "
+            "Use .split() to derive sub-budgets instead."
+        )
+
+    def __deepcopy__(self, memo):
+        raise AffineViolation(
+            "Budget cannot be deepcopied: this would create two budgets "
+            "sharing the same _consumed state, defeating the affine "
+            "discipline. Use .split() to derive sub-budgets instead."
+        )
+
+    def __reduce__(self):
+        raise AffineViolation(
+            "Budget cannot be pickled: this would create two budgets "
+            "sharing the same _consumed state. Send the cap value across "
+            "process boundaries, not the Budget instance."
+        )
+
+    def __reduce_ex__(self, protocol):
+        raise AffineViolation("Budget cannot be pickled: see __reduce__.")
+
+
     def spend(self, amount_uc: int) -> "Budget":
         """Spend `amount_uc` micro-cents. Consumes self; returns
         a fresh Budget with `initial - amount` remaining."""

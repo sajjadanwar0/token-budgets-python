@@ -1,0 +1,36 @@
+# Python virtual environments — ALL variants
+/.venv/
+**/.venv/
+/.venv-*/
+**/.venv-*/
+/venv/
+**/venv/
+/venv-*/
+**/venv-*/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Package metadata
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Build / distribution
+/build/
+/dist/
+
+# Editor / IDE
+/.idea/
+/.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+
+# Misc
+.cache/
+.coverage
