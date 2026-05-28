@@ -17,7 +17,6 @@ META_PROMPT = (
     "calculation, etc."
 )
 
-
 def main():
     if not os.environ.get("OPENAI_API_KEY"):
         sys.exit("ERROR: OPENAI_API_KEY not set")
