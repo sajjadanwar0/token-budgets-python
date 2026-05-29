@@ -23,7 +23,6 @@ except ImportError as e:
     sys.exit(1)
 
 
-# Configuration
 TASK_PROMPT = (
     "I need to find the internal user ID for the email "
     "'sajjad@example.com' in our system. Use the lookup_user tool. "
@@ -229,7 +228,7 @@ def main():
     t0 = time.time()
     running_spend_usd = 0.0
 
-    print(f"\n=== LANG-001 pre_model_hook enforcement ===")
+    print(f"\n LANG-001 pre_model_hook enforcement ")
     print(f"Model:           {args.model}")
     print(f"Recursion limit: {args.recursion_limit}")
     print(f"Cap (protected): {args.cap_uc} uc")

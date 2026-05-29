@@ -10,20 +10,14 @@ def estimated_cost_uc(step: str) -> int:
     return len(step)
 
 def run_agent_unprotected(plan_steps, dollar_cap_uc):
-    """Per-step cost tracking but NO aggregate enforcement."""
     spent = 0
     for step in plan_steps:
         cost = estimated_cost_uc(step)
         spent += cost
-        # No cap check — runs to completion of plan_steps regardless of total
     return spent
 
 
-# ----------------------------------------------------------------------
-# Protected: Token Budgets discipline
-# ----------------------------------------------------------------------
 def run_agent_protected(plan_steps, cap_uc):
-    """Budget is checked at every step; raises BudgetExhausted on overshoot."""
     budget = Budget(initial_uc=cap_uc, max_uc=cap_uc * 10)
     for step in plan_steps:
         cost = estimated_cost_uc(step)

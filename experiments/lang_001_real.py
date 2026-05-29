@@ -121,11 +121,6 @@ class RunResult:
     wall_time_sec: float
     error_msg: Optional[str] = None
 
-
-# ----------------------------------------------------------------------
-# Tool & agent setup
-# ----------------------------------------------------------------------
-
 def build_lookup_tool():
     try:
         from langchain_core.tools import tool

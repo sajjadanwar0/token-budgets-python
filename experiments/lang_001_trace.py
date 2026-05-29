@@ -230,7 +230,6 @@ def main():
         if t.error_msg:
             print(f"    error: {t.error_msg}")
 
-    # Write per-call CSV (one row per LLM call across all runs)
     with open(args.out_csv, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([
