@@ -96,6 +96,5 @@ def main():
                   f"actual={r['actual']:5d}  ratio={r['ratio']:.3f}")
     print(f"\nFull per-prompt results: holdout_results.csv")
 
-
 if __name__ == "__main__":
     main()
