@@ -1,36 +1,15 @@
-"""
-langchain_real_validation_v2.py — Real-SDK validation of Token Budgets.
-
-v2 calibration changes from v1 (smoke test showed S3/S4 didn't fire):
-  S3: replaced "small + runaway + small" with "oversized-first-call".
-      cap_factor 1.5 -> 0.4; runaway expanded to ~3300 chars.
-      Expected: pre_flight_refused at call 0.
-  S4: replaced trivial "Turn N: reply ok" with explicit growing-context
-      prompts (each turn adds ~5 to ~60 'background-context' tokens).
-      cap_factor 1.2 -> 0.4. Expected: mid_loop_fired on turn 3-5.
-
-All other components unchanged from v1:
-  - Real langchain_anthropic.ChatAnthropic and langchain_openai.ChatOpenAI
-  - Affine pre-flight pattern (Budget.spend before invoke)
-  - Passive TokenUsageRecorder as BaseCallbackHandler
-"""
-
 import sys, os, json, csv, argparse, time
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any, Optional, Tuple
 from collections import Counter
-
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from token_budgets import Budget, BudgetExhausted
-
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
 
-
 class TokenUsageRecorder(BaseCallbackHandler):
-    """Records real-API token usage from LangChain's LLMResult."""
     def __init__(self):
         self.last_input = 0
         self.last_output = 0
@@ -45,6 +24,7 @@ class TokenUsageRecorder(BaseCallbackHandler):
                 out_t = md.get("output_tokens", 0)
         except (AttributeError, IndexError):
             pass
+
         if not (in_t or out_t):
             try:
                 usage = (response.llm_output or {}).get("token_usage", {}) or {}
@@ -54,7 +34,6 @@ class TokenUsageRecorder(BaseCallbackHandler):
                 pass
         self.last_input = in_t
         self.last_output = out_t
-
 
 @dataclass
 class ProviderConfig:
@@ -72,6 +51,7 @@ PROVIDERS = {
         cost_out_uc=400,
         chat_cls=ChatAnthropic,
     ),
+
     "openai": ProviderConfig(
         name="openai",
         model_id="gpt-4o-mini-2024-07-18",
@@ -81,13 +61,11 @@ PROVIDERS = {
     ),
 }
 
-
 def estimate_call_uc(prompt: str, cost_in_uc: int, max_tokens: int,
                      cost_out_uc: int, margin: float = 1.5) -> int:
     n_bytes = len(prompt.encode("utf-8"))
     input_tokens_est = max(1, int(n_bytes / 4 * margin))
     return input_tokens_est * cost_in_uc + max_tokens * cost_out_uc
-
 
 @dataclass
 class StepRecord:
@@ -96,14 +74,13 @@ class StepRecord:
     input_tokens: int = 0
     output_tokens: int = 0
 
-
 def run_agent_step(llm, prompt: str, history: List, budget: Budget,
                    provider: ProviderConfig, max_tokens: int
                    ) -> Tuple[Budget, Optional[Any], StepRecord]:
     estimate_uc = estimate_call_uc(
         prompt, provider.cost_in_uc, max_tokens, provider.cost_out_uc
     )
-    new_budget = budget.spend(estimate_uc)  # affine pre-flight
+    new_budget = budget.spend(estimate_uc)
 
     recorder = TokenUsageRecorder()
     messages = history + [HumanMessage(content=prompt)]
@@ -118,11 +95,6 @@ def run_agent_step(llm, prompt: str, history: List, budget: Budget,
         input_tokens=recorder.last_input,
         output_tokens=recorder.last_output,
     )
-
-
-# ============================================================
-# CALIBRATED SCENARIOS v2
-# ============================================================
 
 SCENARIOS = {
     "S1_steady_within_cap": {
@@ -157,11 +129,7 @@ def build_prompts(scenario_id: str) -> List[str]:
                 for c in ["red", "blue", "green", "yellow", "purple", "orange"]]
 
     elif scenario_id == "S3_oversized_first_call":
-        # Single oversized first call (~3500 chars => ~1300 input tokens
-        # estimate => with Anthropic rates ~125K uc estimate, which will
-        # exceed any cap calibrated to 0.4 x sum-of-estimates).
-        # Calls 1 and 2 are tiny - they will not run because pre-flight
-        # refuses call 0.
+
         return [
             ("Write a detailed multi-page analysis of distributed system "
              "architectures and trade-offs, addressing each of these topics: "
@@ -173,11 +141,8 @@ def build_prompts(scenario_id: str) -> List[str]:
         ]
 
     elif scenario_id == "S4_context_growth":
-        # Each turn appends EXPLICIT growing context.
-        # Turn 1: ~80 chars; Turn 2: ~280 chars; Turn 3: ~580 chars;
-        # Turn 4: ~980 chars; Turn 5: ~1480 chars.
-        # Plus accumulated history from prior turns.
-        contexts = [5, 15, 25, 40, 60]  # repetitions of "background-context "
+        contexts = [5, 15, 25, 40, 60]
+
         return [
             f"Turn {i+1}: Continue our design discussion. "
             + ("background-context " * contexts[i])
@@ -197,7 +162,7 @@ def estimate_scenario_total_uc(scenario_id: str, provider: ProviderConfig,
             full = history_text + p
             total += estimate_call_uc(full, provider.cost_in_uc, max_tokens,
                                       provider.cost_out_uc)
-            history_text += p + " ok\n"  # short simulated reply
+            history_text += p + " ok\n"
         else:
             total += estimate_call_uc(p, provider.cost_in_uc, max_tokens,
                                       provider.cost_out_uc)
@@ -218,7 +183,6 @@ class RunResult:
     total_actual_uc: int
     cap_violations: int
     error_msg: str = ""
-
 
 def run_scenario(provider: ProviderConfig, scenario_id: str, rep: int,
                  cap_uc: int, verbose: bool = False) -> RunResult:
@@ -286,7 +250,6 @@ def run_scenario(provider: ProviderConfig, scenario_id: str, rep: int,
         error_msg=err_msg,
     )
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--reps", type=int, default=5)
@@ -325,7 +288,8 @@ def main():
 
     for p_name in args.providers:
         provider = PROVIDERS[p_name]
-        print(f"\n=== Provider: {provider.name} ({provider.model_id}) ===")
+        print(f"\nProvider: {provider.name} ({provider.model_id})")
+
         for s in args.scenarios:
             workload = estimate_scenario_total_uc(
                 s, provider, SCENARIOS[s]["max_tokens"]
@@ -345,6 +309,7 @@ def main():
             writer.writerow(asdict(r))
 
     summary: Dict[str, Any] = {}
+
     for r in all_results:
         cell = f"{r.provider}/{r.scenario}"
         if cell not in summary:
@@ -388,7 +353,7 @@ def main():
     with open(args.out_json, "w") as f:
         json.dump(summary, f, indent=2, default=str)
 
-    print(f"\n\n========== SUMMARY ==========")
+    print(f"\n\nSUMMARY")
     print(f"Total runs:           {len(all_results)}")
     print(f"Wall time:            {wall:.1f}s")
     print(f"Total API spend:      ${total_spent_usd:.5f} ({total_spent_uc} uc)")

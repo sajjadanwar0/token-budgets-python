@@ -1,4 +1,3 @@
-"""A single spend on a fresh Budget is legitimate."""
 from token_budgets import Budget
 
 def single_spend() -> None:

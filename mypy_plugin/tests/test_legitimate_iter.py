@@ -1,6 +1,3 @@
-"""For-loop iteration where each b is a different Budget instance —
-the plugin sees each as the same name 'b' but, because tests run
-in separate mypy invocations, no state leaks between iterations."""
 from token_budgets import Budget
 
 def iter_legitimate() -> None:

@@ -1,4 +1,3 @@
-"""Direct double-spend without rebinding — must be flagged."""
 from token_budgets import Budget
 
 def double_spend_violation() -> None:
