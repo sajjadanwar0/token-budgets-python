@@ -5,14 +5,27 @@ from typing import Generic, TypeVar, Callable, Any
 
 T = TypeVar("T")
 
+
 class AffineViolation(RuntimeError):
-    pass
+    """Raised when a Budget is used after being consumed."""
+
 
 class BudgetExhausted(RuntimeError):
-    pass
+    """Raised when a spend or split would exceed the cap."""
+
 
 @dataclass
 class Budget:
+    """An affine budget capability.
+
+    Once a method consumes `self` (spend, split, merge_with),
+    subsequent uses raise AffineViolation. The intended usage is:
+
+        budget = Budget(initial_uc=1000, max_uc=10_000)
+        budget, after = budget.spend(100)
+        # `before` is no longer usable; `budget` is the new one
+    """
+
     initial_uc: int
     max_uc: int
     _consumed: bool = field(default=False, init=False)
@@ -34,29 +47,51 @@ class Budget:
     def micro_cents(self) -> int:
         with self._lock:
             self._check_alive()
-
             return self.initial_uc
 
+    def __copy__(self):
+        raise AffineViolation(
+            "Budget cannot be copied: this would create two budgets sharing "
+            "the same _consumed state, defeating the affine discipline. "
+            "Use .split() to derive sub-budgets instead."
+        )
+
+    def __deepcopy__(self, memo):
+        raise AffineViolation(
+            "Budget cannot be deepcopied: this would create two budgets "
+            "sharing the same _consumed state, defeating the affine "
+            "discipline. Use .split() to derive sub-budgets instead."
+        )
+
+    def __reduce__(self):
+        raise AffineViolation(
+            "Budget cannot be pickled: this would create two budgets "
+            "sharing the same _consumed state. Send the cap value across "
+            "process boundaries, not the Budget instance."
+        )
+
+    def __reduce_ex__(self, protocol):
+        raise AffineViolation("Budget cannot be pickled: see __reduce__.")
+
+
     def spend(self, amount_uc: int) -> "Budget":
+        """Spend `amount_uc` micro-cents. Consumes self; returns
+        a fresh Budget with `initial - amount` remaining."""
         with self._lock:
             self._check_alive()
-
             if amount_uc < 0:
                 raise ValueError("amount must be non-negative")
-
             if amount_uc > self.initial_uc:
                 raise BudgetExhausted(
                     f"requested {amount_uc} uc, only {self.initial_uc} available"
                 )
-
             self._consumed = True
-
             return Budget(initial_uc=self.initial_uc - amount_uc, max_uc=self.max_uc)
 
     def split(self, amount_uc: int) -> tuple["Budget", "Budget"]:
+        """Split into (taken, kept). Consumes self."""
         with self._lock:
             self._check_alive()
-
             if amount_uc < 0 or amount_uc > self.initial_uc:
                 raise BudgetExhausted(
                     f"split {amount_uc} out of {self.initial_uc} not possible"
@@ -64,29 +99,33 @@ class Budget:
             self._consumed = True
             taken = Budget(initial_uc=amount_uc, max_uc=self.max_uc)
             kept = Budget(initial_uc=self.initial_uc - amount_uc, max_uc=self.max_uc)
-
             return taken, kept
 
     def merge_with(self, other: "Budget") -> "Budget":
+        """Merge `other` into self. Consumes both."""
         with self._lock, other._lock:
             self._check_alive()
             other._check_alive()
-
             if self.max_uc != other.max_uc:
                 raise ValueError("budgets must have matching max_uc")
             total = self.initial_uc + other.initial_uc
-
             if total > self.max_uc:
                 raise BudgetExhausted(
                     f"merge would exceed max {self.max_uc}: {total}"
                 )
-
             self._consumed = True
             other._consumed = True
-
             return Budget(initial_uc=total, max_uc=self.max_uc)
 
+
 class BudgetPool:
+    """Multi-tenant pool with closure-based reservation API.
+
+    The `with_reservation` method REQUIRES the closure to call
+    `receipt.confirm(...)` or `receipt.forfeit(...)` before
+    returning. Failure to do so raises AffineViolation at exit.
+    """
+
     def __init__(self, available_uc: int):
         self.available_uc = available_uc
         self.outstanding_uc = 0
@@ -101,18 +140,17 @@ class BudgetPool:
         try:
             resolved = callback(receipt)
         except Exception:
+            # Closure raised before resolving — forfeit
             self._forfeit_internal(receipt.reserved_uc)
             raise
-
         if not isinstance(resolved, ResolvedReceipt):
+            # Closure forgot to confirm/forfeit
             self._forfeit_internal(receipt.reserved_uc)
-
             raise AffineViolation(
                 "callback did not return a ResolvedReceipt; receipt was "
                 "auto-forfeited. Call receipt.confirm(...) or "
                 "receipt.forfeit(...) before returning."
             )
-
         return resolved.inner
 
     def _reserve_internal(self, amount_uc: int) -> "ReservationReceipt":
@@ -123,7 +161,6 @@ class BudgetPool:
                 )
             self.available_uc -= amount_uc
             self.outstanding_uc += amount_uc
-
         return ReservationReceipt(self, amount_uc)
 
     def _confirm_internal(self, reserved_uc: int, actual_uc: int) -> None:
@@ -152,7 +189,6 @@ class ReservationReceipt:
             )
         self.pool._confirm_internal(self.reserved_uc, actual_uc)
         self._resolved = True
-
         return ResolvedReceipt(value, _private=_PRIVATE_TOKEN)
 
     def forfeit(self, value: T) -> "ResolvedReceipt[T]":
@@ -160,14 +196,17 @@ class ReservationReceipt:
             raise AffineViolation("receipt already resolved")
         self.pool._forfeit_internal(self.reserved_uc)
         self._resolved = True
-
         return ResolvedReceipt(value, _private=_PRIVATE_TOKEN)
 
 
 _PRIVATE_TOKEN = object()
 
+
 @dataclass
 class ResolvedReceipt(Generic[T]):
+    """Witness that a receipt was resolved. Can only be
+    constructed by ReservationReceipt.confirm/forfeit."""
+
     inner: T
     _private: Any = None
 
@@ -178,7 +217,20 @@ class ResolvedReceipt(Generic[T]):
                 "ReservationReceipt.confirm() or forfeit()"
             )
 
+
 class LangChainBudgetCallback:
+    """LangChain BaseCallbackHandler that bounds total cost using
+    a Budget.
+
+    Usage:
+        budget = Budget(initial_uc=10_000, max_uc=100_000)
+        cb = LangChainBudgetCallback(budget, rate_per_input_token_uc=15,
+                                     rate_per_output_token_uc=60)
+        agent.invoke({...}, config={"callbacks": [cb]})
+        # If the agent's running spend exceeds the budget,
+        # cb raises BudgetExhausted which aborts the chain.
+    """
+
     def __init__(
             self,
             budget: Budget,
@@ -191,6 +243,7 @@ class LangChainBudgetCallback:
         self._spent_so_far = 0
 
     def on_llm_start(self, serialized, prompts, **kwargs):
+        # Pre-flight estimate
         est = sum(len(p) for p in prompts) * self.rate_in
         if self._spent_so_far + est > self._budget.micro_cents():
             raise BudgetExhausted(
@@ -200,7 +253,6 @@ class LangChainBudgetCallback:
 
     def on_llm_end(self, response, **kwargs):
         usage = getattr(response, "llm_output", {}).get("token_usage", {})
-
         if not usage:
             return
         cost = (
@@ -208,13 +260,14 @@ class LangChainBudgetCallback:
                 + usage.get("completion_tokens", 0) * self.rate_out
         )
         self._spent_so_far += cost
-
         if self._spent_so_far > self._budget.micro_cents():
             raise BudgetExhausted(
                 f"running spend {self._spent_so_far} exceeded budget"
             )
 
+
 if __name__ == "__main__":
+    # Test 1: basic spend
     b = Budget(initial_uc=1000, max_uc=10_000)
     b2 = b.spend(100)
     assert b2.micro_cents() == 900
@@ -230,6 +283,7 @@ if __name__ == "__main__":
     taken, kept = b.split(300)
     assert taken.micro_cents() + kept.micro_cents() == 1000
 
+    # Test 4: pool with_reservation
     pool = BudgetPool(available_uc=10_000)
     result = pool.with_reservation(
         500, lambda r: r.confirm(423, "agent output")

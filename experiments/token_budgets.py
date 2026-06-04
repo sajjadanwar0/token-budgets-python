@@ -16,6 +16,16 @@ class BudgetExhausted(RuntimeError):
 
 @dataclass
 class Budget:
+    """An affine budget capability.
+
+    Once a method consumes `self` (spend, split, merge_with),
+    subsequent uses raise AffineViolation. The intended usage is:
+
+        budget = Budget(initial_uc=1000, max_uc=10_000)
+        budget, after = budget.spend(100)
+        # `before` is no longer usable; `budget` is the new one
+    """
+
     initial_uc: int
     max_uc: int
     _consumed: bool = field(default=False, init=False)
@@ -40,6 +50,8 @@ class Budget:
             return self.initial_uc
 
     def spend(self, amount_uc: int) -> "Budget":
+        """Spend `amount_uc` micro-cents. Consumes self; returns
+        a fresh Budget with `initial - amount` remaining."""
         with self._lock:
             self._check_alive()
             if amount_uc < 0:
@@ -52,6 +64,7 @@ class Budget:
             return Budget(initial_uc=self.initial_uc - amount_uc, max_uc=self.max_uc)
 
     def split(self, amount_uc: int) -> tuple["Budget", "Budget"]:
+        """Split into (taken, kept). Consumes self."""
         with self._lock:
             self._check_alive()
             if amount_uc < 0 or amount_uc > self.initial_uc:
@@ -64,6 +77,7 @@ class Budget:
             return taken, kept
 
     def merge_with(self, other: "Budget") -> "Budget":
+        """Merge `other` into self. Consumes both."""
         with self._lock, other._lock:
             self._check_alive()
             other._check_alive()
@@ -80,6 +94,13 @@ class Budget:
 
 
 class BudgetPool:
+    """Multi-tenant pool with closure-based reservation API.
+
+    The `with_reservation` method REQUIRES the closure to call
+    `receipt.confirm(...)` or `receipt.forfeit(...)` before
+    returning. Failure to do so raises AffineViolation at exit.
+    """
+
     def __init__(self, available_uc: int):
         self.available_uc = available_uc
         self.outstanding_uc = 0
@@ -94,9 +115,11 @@ class BudgetPool:
         try:
             resolved = callback(receipt)
         except Exception:
+            # Closure raised before resolving — forfeit
             self._forfeit_internal(receipt.reserved_uc)
             raise
         if not isinstance(resolved, ResolvedReceipt):
+            # Closure forgot to confirm/forfeit
             self._forfeit_internal(receipt.reserved_uc)
             raise AffineViolation(
                 "callback did not return a ResolvedReceipt; receipt was "
@@ -156,6 +179,9 @@ _PRIVATE_TOKEN = object()
 
 @dataclass
 class ResolvedReceipt(Generic[T]):
+    """Witness that a receipt was resolved. Can only be
+    constructed by ReservationReceipt.confirm/forfeit."""
+
     inner: T
     _private: Any = None
 
@@ -168,6 +194,18 @@ class ResolvedReceipt(Generic[T]):
 
 
 class LangChainBudgetCallback:
+    """LangChain BaseCallbackHandler that bounds total cost using
+    a Budget.
+
+    Usage:
+        budget = Budget(initial_uc=10_000, max_uc=100_000)
+        cb = LangChainBudgetCallback(budget, rate_per_input_token_uc=15,
+                                     rate_per_output_token_uc=60)
+        agent.invoke({...}, config={"callbacks": [cb]})
+        # If the agent's running spend exceeds the budget,
+        # cb raises BudgetExhausted which aborts the chain.
+    """
+
     def __init__(
             self,
             budget: Budget,
@@ -180,6 +218,7 @@ class LangChainBudgetCallback:
         self._spent_so_far = 0
 
     def on_llm_start(self, serialized, prompts, **kwargs):
+        # Pre-flight estimate
         est = sum(len(p) for p in prompts) * self.rate_in
         if self._spent_so_far + est > self._budget.micro_cents():
             raise BudgetExhausted(
@@ -203,6 +242,7 @@ class LangChainBudgetCallback:
 
 
 if __name__ == "__main__":
+    # Test 1: basic spend
     b = Budget(initial_uc=1000, max_uc=10_000)
     b2 = b.spend(100)
     assert b2.micro_cents() == 900
