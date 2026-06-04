@@ -5,14 +5,11 @@ from typing import Generic, TypeVar, Callable, Any
 
 T = TypeVar("T")
 
-
 class AffineViolation(RuntimeError):
-    """Raised when a Budget is used after being consumed."""
-
+    pass
 
 class BudgetExhausted(RuntimeError):
-    """Raised when a spend or split would exceed the cap."""
-
+    pass
 
 @dataclass
 class Budget:
@@ -37,23 +34,29 @@ class Budget:
     def micro_cents(self) -> int:
         with self._lock:
             self._check_alive()
+
             return self.initial_uc
 
     def spend(self, amount_uc: int) -> "Budget":
         with self._lock:
             self._check_alive()
+
             if amount_uc < 0:
                 raise ValueError("amount must be non-negative")
+
             if amount_uc > self.initial_uc:
                 raise BudgetExhausted(
                     f"requested {amount_uc} uc, only {self.initial_uc} available"
                 )
+
             self._consumed = True
+
             return Budget(initial_uc=self.initial_uc - amount_uc, max_uc=self.max_uc)
 
     def split(self, amount_uc: int) -> tuple["Budget", "Budget"]:
         with self._lock:
             self._check_alive()
+
             if amount_uc < 0 or amount_uc > self.initial_uc:
                 raise BudgetExhausted(
                     f"split {amount_uc} out of {self.initial_uc} not possible"
@@ -61,6 +64,7 @@ class Budget:
             self._consumed = True
             taken = Budget(initial_uc=amount_uc, max_uc=self.max_uc)
             kept = Budget(initial_uc=self.initial_uc - amount_uc, max_uc=self.max_uc)
+
             return taken, kept
 
     def merge_with(self, other: "Budget") -> "Budget":
@@ -82,7 +86,6 @@ class Budget:
 
             return Budget(initial_uc=total, max_uc=self.max_uc)
 
-
 class BudgetPool:
     def __init__(self, available_uc: int):
         self.available_uc = available_uc
@@ -102,8 +105,8 @@ class BudgetPool:
             raise
 
         if not isinstance(resolved, ResolvedReceipt):
-            # Closure forgot to confirm/forfeit
             self._forfeit_internal(receipt.reserved_uc)
+
             raise AffineViolation(
                 "callback did not return a ResolvedReceipt; receipt was "
                 "auto-forfeited. Call receipt.confirm(...) or "
@@ -120,6 +123,7 @@ class BudgetPool:
                 )
             self.available_uc -= amount_uc
             self.outstanding_uc += amount_uc
+
         return ReservationReceipt(self, amount_uc)
 
     def _confirm_internal(self, reserved_uc: int, actual_uc: int) -> None:
@@ -131,6 +135,7 @@ class BudgetPool:
     def _forfeit_internal(self, reserved_uc: int) -> None:
         with self._lock:
             self.outstanding_uc -= reserved_uc
+
 
 class ReservationReceipt:
     def __init__(self, pool: BudgetPool, reserved_uc: int):
@@ -147,6 +152,7 @@ class ReservationReceipt:
             )
         self.pool._confirm_internal(self.reserved_uc, actual_uc)
         self._resolved = True
+
         return ResolvedReceipt(value, _private=_PRIVATE_TOKEN)
 
     def forfeit(self, value: T) -> "ResolvedReceipt[T]":
@@ -154,6 +160,7 @@ class ReservationReceipt:
             raise AffineViolation("receipt already resolved")
         self.pool._forfeit_internal(self.reserved_uc)
         self._resolved = True
+
         return ResolvedReceipt(value, _private=_PRIVATE_TOKEN)
 
 
@@ -170,7 +177,6 @@ class ResolvedReceipt(Generic[T]):
                 "ResolvedReceipt cannot be constructed directly; use "
                 "ReservationReceipt.confirm() or forfeit()"
             )
-
 
 class LangChainBudgetCallback:
     def __init__(
@@ -194,6 +200,7 @@ class LangChainBudgetCallback:
 
     def on_llm_end(self, response, **kwargs):
         usage = getattr(response, "llm_output", {}).get("token_usage", {})
+
         if not usage:
             return
         cost = (
@@ -201,6 +208,7 @@ class LangChainBudgetCallback:
                 + usage.get("completion_tokens", 0) * self.rate_out
         )
         self._spent_so_far += cost
+
         if self._spent_so_far > self._budget.micro_cents():
             raise BudgetExhausted(
                 f"running spend {self._spent_so_far} exceeded budget"

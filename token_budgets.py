@@ -16,6 +16,16 @@ class BudgetExhausted(RuntimeError):
 
 @dataclass
 class Budget:
+    """An affine budget capability.
+
+    Once a method consumes `self` (spend, split, merge_with),
+    subsequent uses raise AffineViolation. The intended usage is:
+
+        budget = Budget(initial_uc=1000, max_uc=10_000)
+        budget, after = budget.spend(100)
+        # `before` is no longer usable; `budget` is the new one
+    """
+
     initial_uc: int
     max_uc: int
     _consumed: bool = field(default=False, init=False)
@@ -39,7 +49,34 @@ class Budget:
             self._check_alive()
             return self.initial_uc
 
+    def __copy__(self):
+        raise AffineViolation(
+            "Budget cannot be copied: this would create two budgets sharing "
+            "the same _consumed state, defeating the affine discipline. "
+            "Use .split() to derive sub-budgets instead."
+        )
+
+    def __deepcopy__(self, memo):
+        raise AffineViolation(
+            "Budget cannot be deepcopied: this would create two budgets "
+            "sharing the same _consumed state, defeating the affine "
+            "discipline. Use .split() to derive sub-budgets instead."
+        )
+
+    def __reduce__(self):
+        raise AffineViolation(
+            "Budget cannot be pickled: this would create two budgets "
+            "sharing the same _consumed state. Send the cap value across "
+            "process boundaries, not the Budget instance."
+        )
+
+    def __reduce_ex__(self, protocol):
+        raise AffineViolation("Budget cannot be pickled: see __reduce__.")
+
+
     def spend(self, amount_uc: int) -> "Budget":
+        """Spend `amount_uc` micro-cents. Consumes self; returns
+        a fresh Budget with `initial - amount` remaining."""
         with self._lock:
             self._check_alive()
             if amount_uc < 0:
@@ -52,6 +89,7 @@ class Budget:
             return Budget(initial_uc=self.initial_uc - amount_uc, max_uc=self.max_uc)
 
     def split(self, amount_uc: int) -> tuple["Budget", "Budget"]:
+        """Split into (taken, kept). Consumes self."""
         with self._lock:
             self._check_alive()
             if amount_uc < 0 or amount_uc > self.initial_uc:
@@ -64,22 +102,19 @@ class Budget:
             return taken, kept
 
     def merge_with(self, other: "Budget") -> "Budget":
+        """Merge `other` into self. Consumes both."""
         with self._lock, other._lock:
             self._check_alive()
             other._check_alive()
-
             if self.max_uc != other.max_uc:
                 raise ValueError("budgets must have matching max_uc")
             total = self.initial_uc + other.initial_uc
-
             if total > self.max_uc:
                 raise BudgetExhausted(
                     f"merge would exceed max {self.max_uc}: {total}"
                 )
-
             self._consumed = True
             other._consumed = True
-
             return Budget(initial_uc=total, max_uc=self.max_uc)
 
 
@@ -100,16 +135,14 @@ class BudgetPool:
         except Exception:
             self._forfeit_internal(receipt.reserved_uc)
             raise
-
         if not isinstance(resolved, ResolvedReceipt):
-            # Closure forgot to confirm/forfeit
             self._forfeit_internal(receipt.reserved_uc)
+
             raise AffineViolation(
                 "callback did not return a ResolvedReceipt; receipt was "
                 "auto-forfeited. Call receipt.confirm(...) or "
                 "receipt.forfeit(...) before returning."
             )
-
         return resolved.inner
 
     def _reserve_internal(self, amount_uc: int) -> "ReservationReceipt":
@@ -201,10 +234,12 @@ class LangChainBudgetCallback:
                 + usage.get("completion_tokens", 0) * self.rate_out
         )
         self._spent_so_far += cost
+
         if self._spent_so_far > self._budget.micro_cents():
             raise BudgetExhausted(
                 f"running spend {self._spent_so_far} exceeded budget"
             )
+
 
 if __name__ == "__main__":
     b = Budget(initial_uc=1000, max_uc=10_000)
