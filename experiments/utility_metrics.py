@@ -5,7 +5,6 @@ import statistics
 from collections import defaultdict
 from typing import Dict, List
 
-
 def read_csv(path: str) -> List[Dict[str, str]]:
     rows = []
     with open(path, "r", newline="") as f:

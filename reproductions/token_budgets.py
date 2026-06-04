@@ -67,16 +67,21 @@ class Budget:
         with self._lock, other._lock:
             self._check_alive()
             other._check_alive()
+
             if self.max_uc != other.max_uc:
                 raise ValueError("budgets must have matching max_uc")
             total = self.initial_uc + other.initial_uc
+
             if total > self.max_uc:
                 raise BudgetExhausted(
                     f"merge would exceed max {self.max_uc}: {total}"
                 )
+
             self._consumed = True
             other._consumed = True
+
             return Budget(initial_uc=total, max_uc=self.max_uc)
+
 
 class BudgetPool:
     def __init__(self, available_uc: int):
@@ -95,13 +100,16 @@ class BudgetPool:
         except Exception:
             self._forfeit_internal(receipt.reserved_uc)
             raise
+
         if not isinstance(resolved, ResolvedReceipt):
+            # Closure forgot to confirm/forfeit
             self._forfeit_internal(receipt.reserved_uc)
             raise AffineViolation(
                 "callback did not return a ResolvedReceipt; receipt was "
                 "auto-forfeited. Call receipt.confirm(...) or "
                 "receipt.forfeit(...) before returning."
             )
+
         return resolved.inner
 
     def _reserve_internal(self, amount_uc: int) -> "ReservationReceipt":
@@ -123,7 +131,6 @@ class BudgetPool:
     def _forfeit_internal(self, reserved_uc: int) -> None:
         with self._lock:
             self.outstanding_uc -= reserved_uc
-
 
 class ReservationReceipt:
     def __init__(self, pool: BudgetPool, reserved_uc: int):
@@ -152,7 +159,6 @@ class ReservationReceipt:
 
 _PRIVATE_TOKEN = object()
 
-
 @dataclass
 class ResolvedReceipt(Generic[T]):
     inner: T
@@ -164,6 +170,7 @@ class ResolvedReceipt(Generic[T]):
                 "ResolvedReceipt cannot be constructed directly; use "
                 "ReservationReceipt.confirm() or forfeit()"
             )
+
 
 class LangChainBudgetCallback:
     def __init__(
